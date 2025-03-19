@@ -31,25 +31,25 @@ export default function StatsCards() {
   }, [])
 
   // Determine status colors based on thresholds
-  const getTemperatureStatus = (value) => {
+  const getTemperatureStatus = (value: number) => {
     if (value > 32) return "text-red-500"
     if (value < 18) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getHumidityStatus = (value) => {
+  const getHumidityStatus = (value: number) => {
     if (value > 80) return "text-red-500"
     if (value < 40) return "text-yellow-500"
     return "text-green-500"
   }
 
-  const getSoilMoistureStatus = (value) => {
+  const getSoilMoistureStatus = (value: number) => {
     if (value < 30) return "text-red-500"
     if (value > 70) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getLightStatus = (value) => {
+  const getLightStatus = (value: number) => {
     if (value > 2000) return "text-yellow-500"
     if (value < 500) return "text-blue-500"
     return "text-green-500"

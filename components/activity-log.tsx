@@ -7,7 +7,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Droplet, Fan, Lightbulb, Thermometer, AlertTriangle } from "lucide-react"
 
 // Mock activity data
-const mockActivities = [
+interface DeviceActivity {
+  id: number
+  timestamp: string
+  type: "device"
+  device: "water-pump" | "fan" | "lights"
+  action: string
+  reason: string
+  automatic: boolean
+}
+
+interface AlertActivity {
+  id: number
+  timestamp: string
+  type: "alert"
+  severity: "critical" | "warning" | "info"
+  message: string
+  automatic: boolean
+}
+
+type Activity = DeviceActivity | AlertActivity
+
+const mockActivities: Activity[] = [
   {
     id: 1,
     timestamp: "2023-05-15T08:30:00",
@@ -99,7 +120,7 @@ const mockActivities = [
 ]
 
 export default function ActivityLog() {
-  const [filter, setFilter] = useState("all")
+  const [filter, setFilter] = useState<string>("all")
 
   const filteredActivities = mockActivities.filter((activity) => {
     if (filter === "all") return true
@@ -110,7 +131,7 @@ export default function ActivityLog() {
     return true
   })
 
-  const getDeviceIcon = (device) => {
+  const getDeviceIcon = (device: DeviceActivity["device"]) => {
     switch (device) {
       case "water-pump":
         return <Droplet size={16} />
@@ -123,7 +144,7 @@ export default function ActivityLog() {
     }
   }
 
-  const getSeverityIcon = (severity) => {
+  const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case "critical":
         return <AlertTriangle size={16} className="text-red-500" />
@@ -134,9 +155,13 @@ export default function ActivityLog() {
     }
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString()
+  }
+
+  const isDeviceActivity = (activity: Activity): activity is DeviceActivity => {
+    return activity.type === "device"
   }
 
   return (
@@ -166,12 +191,14 @@ export default function ActivityLog() {
           {filteredActivities.map((activity) => (
             <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg border">
               <div className="mt-0.5">
-                {activity.type === "device" ? getDeviceIcon(activity.device) : getSeverityIcon(activity.severity)}
+                {isDeviceActivity(activity) 
+                  ? getDeviceIcon(activity.device) 
+                  : getSeverityIcon(activity.severity)}
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">
-                    {activity.type === "device"
+                    {isDeviceActivity(activity)
                       ? `${activity.device.replace("-", " ").replace(/\b\w/g, (l) => l.toUpperCase())} ${activity.action.replace("-", " ")}`
                       : activity.message}
                   </p>
@@ -179,7 +206,9 @@ export default function ActivityLog() {
                     {activity.automatic ? "Auto" : "Manual"}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{activity.type === "device" && activity.reason}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isDeviceActivity(activity) && activity.reason}
+                </p>
                 <p className="text-xs text-muted-foreground mt-2">{formatDate(activity.timestamp)}</p>
               </div>
             </div>

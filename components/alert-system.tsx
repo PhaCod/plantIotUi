@@ -8,7 +8,17 @@ import { Button } from "@/components/ui/button"
 import { AlertTriangle, CheckCircle, XCircle, Bell, BellOff } from "lucide-react"
 
 // Mock alerts data
-const mockAlerts = [
+interface Alert {
+  id: number
+  timestamp: string
+  type: string
+  message: string
+  details: string
+  severity: "warning" | "critical" | "info"
+  status: "active" | "resolved"
+}
+
+const mockAlerts: Alert[] = [
   {
     id: 1,
     timestamp: "2023-05-15T13:15:00",
@@ -56,8 +66,8 @@ const mockAlerts = [
   },
 ]
 
-export default function AlertSystem({ onAlertCountChange }) {
-  const [alerts, setAlerts] = useState(mockAlerts)
+export default function AlertSystem({ onAlertCountChange }: { onAlertCountChange?: (count: number) => void }) {
+  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
 
   const activeAlerts = alerts.filter((alert) => alert.status === "active")
   const resolvedAlerts = alerts.filter((alert) => alert.status === "resolved")
@@ -68,7 +78,7 @@ export default function AlertSystem({ onAlertCountChange }) {
     }
   }, [activeAlerts.length, onAlertCountChange])
 
-  const handleResolveAlert = (id) => {
+  const handleResolveAlert = (id: number) => {
     setAlerts(alerts.map((alert) => (alert.id === id ? { ...alert, status: "resolved" } : alert)))
   }
 
@@ -76,7 +86,7 @@ export default function AlertSystem({ onAlertCountChange }) {
     setAlerts(alerts.map((alert) => (alert.status === "active" ? { ...alert, status: "resolved" } : alert)))
   }
 
-  const getSeverityBadge = (severity) => {
+  const getSeverityBadge = (severity: "critical" | "warning" | "info") => {
     switch (severity) {
       case "critical":
         return (
@@ -86,7 +96,7 @@ export default function AlertSystem({ onAlertCountChange }) {
         )
       case "warning":
         return (
-          <Badge variant="warning" className="ml-2 bg-yellow-500">
+          <Badge variant="secondary" className="ml-2 bg-yellow-500">
             Warning
           </Badge>
         )
@@ -99,7 +109,7 @@ export default function AlertSystem({ onAlertCountChange }) {
     }
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString()
   }
