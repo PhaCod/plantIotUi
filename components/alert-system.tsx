@@ -56,8 +56,13 @@ const mockAlerts = [
   },
 ]
 
+<<<<<<< HEAD
 export default function AlertSystem({ onAlertCountChange }) {
   const [alerts, setAlerts] = useState(mockAlerts)
+=======
+export default function AlertSystem({ onAlertCountChange }: { onAlertCountChange?: (count: number) => void }) {
+  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
+>>>>>>> origin/main
 
   const activeAlerts = alerts.filter((alert) => alert.status === "active")
   const resolvedAlerts = alerts.filter((alert) => alert.status === "resolved")

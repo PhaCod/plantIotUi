@@ -1,231 +1,245 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
-import { Slider } from "@/components/ui/slider"
-import { Button } from "@/components/ui/button"
-import { Droplet, Fan, Lightbulb, Palette, CheckCircle } from "lucide-react"
-import { HexColorPicker } from "react-colorful"
-import { toast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import {
+  Droplet,
+  Fan,
+  Lightbulb,
+  Palette,
+  CheckCircle,
+  WifiOff,
+} from "lucide-react";
+import { HexColorPicker } from "react-colorful";
+import { toast } from "@/components/ui/use-toast";
+import { iotApi, FeedType } from "@/lib/api";
 
 export default function DeviceControl() {
-  const [waterPump, setWaterPump] = useState(false)
-  const [fan, setFan] = useState(false)
-  const [lights, setLights] = useState(false)
-  const [lightColor, setLightColor] = useState("#22c55e")
-  const [lightIntensity, setLightIntensity] = useState(70)
-  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [waterPump, setWaterPump] = useState(false);
+  const [fan, setFan] = useState(false);
+  const [lights, setLights] = useState(false);
+  const [lightColor, setLightColor] = useState("#22c55e");
+  const [lightIntensity, setLightIntensity] = useState(70);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Loading states
-  const [waterPumpLoading, setWaterPumpLoading] = useState(false)
-  const [fanLoading, setFanLoading] = useState(false)
-  const [lightsLoading, setLightsLoading] = useState(false)
-  const [applyingSettings, setApplyingSettings] = useState(false)
+  const [waterPumpLoading, setWaterPumpLoading] = useState(false);
+  const [fanLoading, setFanLoading] = useState(false);
+  const [lightsLoading, setLightsLoading] = useState(false);
+  const [applyingSettings, setApplyingSettings] = useState(false);
 
   // Success states
-  const [waterPumpSuccess, setWaterPumpSuccess] = useState(false)
-  const [fanSuccess, setFanSuccess] = useState(false)
-  const [lightsSuccess, setLightsSuccess] = useState(false)
+  const [waterPumpSuccess, setWaterPumpSuccess] = useState(false);
+  const [fanSuccess, setFanSuccess] = useState(false);
+  const [lightsSuccess, setLightsSuccess] = useState(false);
+
+  useEffect(() => {
+    let connectionTimeout: NodeJS.Timeout = setTimeout(() => {}, 0);
+
+    const resetConnection = () => {
+      // setIsConnected(false)
+      setWaterPump(false);
+      setFan(false);
+      setLights(false);
+    };
+
+    const setupConnection = () => {
+      // Reset connection state
+      resetConnection();
+      setIsConnected(true);
+      iotApi
+        .getFeedLastData("fan")
+        .then((data) => {
+          setFan(data.value === "1");
+          console.log("Fan pump data:", data.value);
+        })
+        .catch(() => {
+          resetConnection();
+        });
+      iotApi
+        .getFeedLastData("pump")
+        .then((data) => {
+          setWaterPump(data.value === "1");
+          console.log("Water pump data:", data.value);
+        })
+        .catch(() => {
+          resetConnection();
+        });
+
+      // // Set a timeout to check if we receive any data
+      // connectionTimeout = setTimeout(() => {
+      //   if (!isConnected) {
+      //     resetConnection()
+      //     toast({
+      //       title: "Connection Error",
+      //       description: "Unable to connect to IoT devices. Please check your connection.",
+      //       variant: "destructive",
+      //     })
+      //   }
+      // }, 5000) // Wait 5 seconds for initial data
+    };
+
+    setupConnection();
+
+    return () => {
+      clearTimeout(connectionTimeout);
+      iotApi.unsubscribeFromStream();
+    };
+  }, []);
 
   const handleWaterPumpToggle = async () => {
-    setWaterPumpLoading(true)
-    setWaterPumpSuccess(false)
+    setWaterPumpLoading(true);
+    setWaterPumpSuccess(false);
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "water-pump",
-          action: !waterPump ? "on" : "off",
-        }),
-      })
+      await iotApi.postFeedData("pump", !waterPump ? "1" : "0");
 
-      if (!response.ok) {
-        throw new Error("Failed to control water pump")
-      }
+      setWaterPump(!waterPump);
+      setWaterPumpSuccess(true);
 
-      // Update state after successful response
-      setWaterPump(!waterPump)
-      setWaterPumpSuccess(true)
-
-      // Show success message
       toast({
         title: "Water Pump Control",
-        description: !waterPump ? "Water pump activated successfully" : "Water pump deactivated successfully",
-      })
+        description: !waterPump
+          ? "Water pump activated successfully"
+          : "Water pump deactivated successfully",
+      });
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
-        setWaterPumpSuccess(false)
-      }, 3000)
+        setWaterPumpSuccess(false);
+      }, 3000);
     } catch (error) {
-      console.error("Error controlling water pump:", error)
+      console.error("Error controlling water pump:", error);
       toast({
         title: "Error",
         description: "Failed to control water pump. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setWaterPumpLoading(false)
+      setWaterPumpLoading(false);
     }
-  }
+  };
 
   const handleFanToggle = async () => {
-    setFanLoading(true)
-    setFanSuccess(false)
+    setFanLoading(true);
+    setFanSuccess(false);
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "fan",
-          action: !fan ? "on" : "off",
-        }),
-      })
+      await iotApi.postFeedData("fan", !fan ? "1" : "0");
 
-      if (!response.ok) {
-        throw new Error("Failed to control fan")
-      }
+      setFan(!fan);
+      setFanSuccess(true);
 
-      // Update state after successful response
-      setFan(!fan)
-      setFanSuccess(true)
-
-      // Show success message
       toast({
         title: "Ventilation Fan Control",
-        description: !fan ? "Fan activated successfully" : "Fan deactivated successfully",
-      })
+        description: !fan
+          ? "Fan activated successfully"
+          : "Fan deactivated successfully",
+      });
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
-        setFanSuccess(false)
-      }, 3000)
+        setFanSuccess(false);
+      }, 3000);
     } catch (error) {
-      console.error("Error controlling fan:", error)
+      console.error("Error controlling fan:", error);
       toast({
         title: "Error",
         description: "Failed to control fan. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setFanLoading(false)
+      setFanLoading(false);
     }
-  }
+  };
 
-  const handleLightsToggle = async () => {
-    setLightsLoading(true)
-    setLightsSuccess(false)
+  const handleLEDToggle = async () => {
+    setLightsLoading(true);
+    setLightsSuccess(false);
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "lights",
-          action: !lights ? "on" : "off",
-          color: lightColor,
-          intensity: lightIntensity,
-        }),
-      })
+      await iotApi.postFeedData("led", !lights ? "1" : "0");
 
-      if (!response.ok) {
-        throw new Error("Failed to control lights")
-      }
+      setLights(!lights);
+      setLightsSuccess(true);
 
-      // Update state after successful response
-      setLights(!lights)
-      setLightsSuccess(true)
-
-      // Show success message
       toast({
         title: "RGB LED Lights Control",
-        description: !lights ? "Lights turned on successfully" : "Lights turned off successfully",
-      })
+        description: !lights
+          ? "Lights turned on successfully"
+          : "Lights turned off successfully",
+      });
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
-        setLightsSuccess(false)
-      }, 3000)
+        setLightsSuccess(false);
+      }, 3000);
     } catch (error) {
-      console.error("Error controlling lights:", error)
+      console.error("Error controlling lights:", error);
       toast({
         title: "Error",
         description: "Failed to control lights. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLightsLoading(false)
+      setLightsLoading(false);
     }
-  }
+  };
 
-  const handleLightIntensityChange = (value) => {
-    setLightIntensity(value)
-  }
+  const handleLightIntensityChange = (value: number) => {
+    setLightIntensity(value);
+  };
 
   const applyLightSettings = async () => {
-    if (!lights) return
+    if (!lights) return;
 
-    setApplyingSettings(true)
+    setApplyingSettings(true);
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "lights",
-          action: "settings",
-          color: lightColor,
-          intensity: lightIntensity,
-        }),
-      })
+      await iotApi.postFeedData("light", lightIntensity.toString());
 
-      if (!response.ok) {
-        throw new Error("Failed to apply light settings")
-      }
-
-      // Show success message
       toast({
         title: "RGB LED Lights Settings",
         description: "Light settings applied successfully",
-      })
+      });
     } catch (error) {
-      console.error("Error applying light settings:", error)
+      console.error("Error applying light settings:", error);
       toast({
         title: "Error",
         description: "Failed to apply light settings. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setApplyingSettings(false)
+      setApplyingSettings(false);
     }
-  }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card>
+      <Card className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
         <CardHeader>
-          <CardTitle>Water Pump Control ⚡</CardTitle>
-          <CardDescription>Control irrigation system</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Water Pump Control ⚡</CardTitle>
+              <CardDescription>Control irrigation system</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 rounded-full flex items-center justify-center bg-blue-100 border-4 border-blue-200 relative">
-            <Droplet size={40} className={waterPump ? "text-blue-500" : "text-gray-400"} />
+            <Droplet
+              size={40}
+              className={waterPump ? "text-blue-500" : "text-gray-400"}
+            />
             {waterPumpSuccess && (
               <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
                 <CheckCircle size={16} />
@@ -237,7 +251,7 @@ export default function DeviceControl() {
               id="water-pump"
               checked={waterPump}
               onCheckedChange={handleWaterPumpToggle}
-              disabled={waterPumpLoading}
+              disabled={waterPumpLoading || !isConnected}
             />
             <div className="grid gap-1.5">
               <label
@@ -245,7 +259,16 @@ export default function DeviceControl() {
                 className="font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 {waterPump ? "Active" : "Inactive"}
-                {waterPumpLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                {waterPumpLoading && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    (Connecting...)
+                  </span>
+                )}
+                {!isConnected && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    (Offline)
+                  </span>
+                )}
               </label>
               <p className="text-sm text-muted-foreground">
                 {waterPump ? "Water pump is running" : "Water pump is off"}
@@ -258,7 +281,7 @@ export default function DeviceControl() {
             variant="outline"
             size="sm"
             onClick={() => handleWaterPumpToggle()}
-            disabled={waterPumpLoading || waterPump}
+            disabled={waterPumpLoading || waterPump || !isConnected}
           >
             {waterPumpLoading && !waterPump ? (
               <span className="flex items-center">
@@ -268,7 +291,14 @@ export default function DeviceControl() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -285,7 +315,7 @@ export default function DeviceControl() {
             variant="outline"
             size="sm"
             onClick={() => handleWaterPumpToggle()}
-            disabled={waterPumpLoading || !waterPump}
+            disabled={waterPumpLoading || !waterPump || !isConnected}
           >
             {waterPumpLoading && waterPump ? (
               <span className="flex items-center">
@@ -295,7 +325,14 @@ export default function DeviceControl() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -311,10 +348,15 @@ export default function DeviceControl() {
         </CardFooter>
       </Card>
 
-      <Card>
+      <Card className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
         <CardHeader>
-          <CardTitle>Ventilation Fan 🌀</CardTitle>
-          <CardDescription>Control air circulation</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Ventilation Fan 🌀</CardTitle>
+              <CardDescription>Control air circulation</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 rounded-full flex items-center justify-center bg-gray-100 border-4 border-gray-200 relative">
@@ -330,21 +372,42 @@ export default function DeviceControl() {
             )}
           </div>
           <div className="flex items-center space-x-4">
-            <Switch id="fan" checked={fan} onCheckedChange={handleFanToggle} disabled={fanLoading} />
+            <Switch
+              id="fan"
+              checked={fan}
+              onCheckedChange={handleFanToggle}
+              disabled={fanLoading || !isConnected}
+            />
             <div className="grid gap-1.5">
               <label
                 htmlFor="fan"
                 className="font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 {fan ? "Active" : "Inactive"}
-                {fanLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                {fanLoading && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    (Connecting...)
+                  </span>
+                )}
+                {!isConnected && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    (Offline)
+                  </span>
+                )}
               </label>
-              <p className="text-sm text-muted-foreground">{fan ? "Fan is running" : "Fan is off"}</p>
+              <p className="text-sm text-muted-foreground">
+                {fan ? "Fan is running" : "Fan is off"}
+              </p>
             </div>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || fan}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleFanToggle()}
+            disabled={fanLoading || fan || !isConnected}
+          >
             {fanLoading && !fan ? (
               <span className="flex items-center">
                 <svg
@@ -353,7 +416,14 @@ export default function DeviceControl() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -366,7 +436,12 @@ export default function DeviceControl() {
               "Turn On"
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || !fan}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleFanToggle()}
+            disabled={fanLoading || !fan || !isConnected}
+          >
             {fanLoading && fan ? (
               <span className="flex items-center">
                 <svg
@@ -375,7 +450,14 @@ export default function DeviceControl() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -391,10 +473,19 @@ export default function DeviceControl() {
         </CardFooter>
       </Card>
 
-      <Card className="md:col-span-2">
+      <Card
+        className={`md:col-span-2 ${
+          !isConnected ? "opacity-50 pointer-events-none" : ""
+        }`}
+      >
         <CardHeader>
-          <CardTitle>RGB LED Lights 💡</CardTitle>
-          <CardDescription>Control grow lights</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>RGB LED Lights 💡</CardTitle>
+              <CardDescription>Control grow lights</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row items-center gap-8">
@@ -407,7 +498,10 @@ export default function DeviceControl() {
                   opacity: lights ? lightIntensity / 100 : 0.3,
                 }}
               >
-                <Lightbulb size={48} className={lights ? "text-white" : "text-gray-400"} />
+                <Lightbulb
+                  size={48}
+                  className={lights ? "text-white" : "text-gray-400"}
+                />
                 {lightsSuccess && (
                   <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
                     <CheckCircle size={16} />
@@ -415,16 +509,32 @@ export default function DeviceControl() {
                 )}
               </div>
               <div className="flex items-center space-x-4">
-                <Switch id="lights" checked={lights} onCheckedChange={handleLightsToggle} disabled={lightsLoading} />
+                <Switch
+                  id="lights"
+                  checked={lights}
+                  onCheckedChange={handleLEDToggle}
+                  disabled={lightsLoading || !isConnected}
+                />
                 <div className="grid gap-1.5">
                   <label
                     htmlFor="lights"
                     className="font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     {lights ? "Active" : "Inactive"}
-                    {lightsLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                    {lightsLoading && (
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        (Connecting...)
+                      </span>
+                    )}
+                    {!isConnected && (
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        (Offline)
+                      </span>
+                    )}
                   </label>
-                  <p className="text-sm text-muted-foreground">{lights ? "Lights are on" : "Lights are off"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {lights ? "Lights are on" : "Lights are off"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -432,36 +542,50 @@ export default function DeviceControl() {
             <div className="flex-1 space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Light Intensity</label>
-                  <span className="text-sm text-muted-foreground">{lightIntensity}%</span>
+                  <label className="text-sm font-medium leading-none">
+                    Light Intensity
+                  </label>
+                  <span className="text-sm text-muted-foreground">
+                    {lightIntensity}%
+                  </span>
                 </div>
                 <Slider
                   value={[lightIntensity]}
                   min={0}
                   max={100}
                   step={1}
-                  onValueChange={(value) => handleLightIntensityChange(value[0])}
-                  disabled={!lights}
+                  onValueChange={(value) =>
+                    handleLightIntensityChange(value[0])
+                  }
+                  disabled={!lights || !isConnected}
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <label className="text-sm font-medium leading-none">Light Color</label>
+                  <label className="text-sm font-medium leading-none">
+                    Light Color
+                  </label>
                   <Button
                     variant="outline"
                     size="sm"
                     className="gap-2"
                     onClick={() => setShowColorPicker(!showColorPicker)}
-                    disabled={!lights}
+                    disabled={!lights || !isConnected}
                   >
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: lightColor }}></div>
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: lightColor }}
+                    ></div>
                     <Palette size={14} />
                   </Button>
                 </div>
                 {showColorPicker && (
                   <div className="mt-2">
-                    <HexColorPicker color={lightColor} onChange={setLightColor} />
+                    <HexColorPicker
+                      color={lightColor}
+                      onChange={setLightColor}
+                    />
                   </div>
                 )}
               </div>
@@ -476,7 +600,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#ef4444" }}
               onClick={() => setLightColor("#ef4444")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -484,7 +608,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#3b82f6" }}
               onClick={() => setLightColor("#3b82f6")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -492,7 +616,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#22c55e" }}
               onClick={() => setLightColor("#22c55e")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -500,7 +624,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#eab308" }}
               onClick={() => setLightColor("#eab308")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -508,10 +632,15 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#a855f7" }}
               onClick={() => setLightColor("#a855f7")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
           </div>
-          <Button variant="default" size="sm" disabled={!lights || applyingSettings} onClick={applyLightSettings}>
+          <Button
+            variant="default"
+            size="sm"
+            disabled={!lights || applyingSettings || !isConnected}
+            onClick={applyLightSettings}
+          >
             {applyingSettings ? (
               <span className="flex items-center">
                 <svg
@@ -520,7 +649,14 @@ export default function DeviceControl() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -536,6 +672,5 @@ export default function DeviceControl() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
-
