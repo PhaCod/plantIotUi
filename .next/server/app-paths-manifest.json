@@ -1,0 +1,4 @@
+{
+  "/api/environment-data/route": "app/api/environment-data/route.js",
+  "/page": "app/page.js"
+}

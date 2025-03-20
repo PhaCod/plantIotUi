@@ -19,6 +19,7 @@ interface Alert {
 }
 
 const mockAlerts: Alert[] = [
+
   {
     id: 1,
     timestamp: "2023-05-15T13:15:00",
@@ -66,8 +67,10 @@ const mockAlerts: Alert[] = [
   },
 ]
 
+
 export default function AlertSystem({ onAlertCountChange }: { onAlertCountChange?: (count: number) => void }) {
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
+
 
   const activeAlerts = alerts.filter((alert) => alert.status === "active")
   const resolvedAlerts = alerts.filter((alert) => alert.status === "resolved")
@@ -87,6 +90,7 @@ export default function AlertSystem({ onAlertCountChange }: { onAlertCountChange
   }
 
   const getSeverityBadge = (severity: "critical" | "warning" | "info") => {
+
     switch (severity) {
       case "critical":
         return (
@@ -96,6 +100,7 @@ export default function AlertSystem({ onAlertCountChange }: { onAlertCountChange
         )
       case "warning":
         return (
+
           <Badge variant="secondary" className="ml-2 bg-yellow-500">
             Warning
           </Badge>

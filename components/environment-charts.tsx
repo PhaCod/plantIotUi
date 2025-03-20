@@ -1,133 +1,89 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-interface ChartData {
-  time: string;
-  temperature: number;
-  humidity: number;
-  soilMoisture: number;
-  lightIntensity: number;
+// Define types for chart data
+interface ChartDataPoint {
+  time: string
+  timestamp: number
+  temperature?: number
+  humidity?: number
+  soilMoisture?: number
+  lightIntensity?: number
 }
 
 export default function EnvironmentCharts() {
-  const [timeRange, setTimeRange] = useState("6h");
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Fetch data from backend API
-  const fetchEnvironmentData = async (hours: number) => {
-    setIsLoading(true);
-    setError(null);
+  const [timeRange, setTimeRange] = useState("6h")
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch all environment data from Adafruit IO
+  const fetchEnvironmentData = async () => {
+    setIsLoading(true)
+    setError(null)
 
     try {
-      // Replace with your actual API endpoint
-      const response = await fetch(`/api/environment-data?hours=${hours}`);
+      // Create a server-side API route to proxy the requests and avoid CORS issues
+      // Instead of calling Adafruit IO directly, we'll use our own API endpoint
+      const response = await fetch("/api/environment-data?timeRange=" + timeRange)
 
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        throw new Error(`API request failed with status ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
-      // Format the data for the chart
-      const formattedData = data.map(
-        (item: {
-          timestamp: string;
-          temperature: number;
-          humidity: number;
-          soilMoisture: number;
-          lightIntensity: number;
-        }) => ({
-          time: new Date(item.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          temperature: item.temperature,
-          humidity: item.humidity,
-          soilMoisture: item.soilMoisture,
-          lightIntensity: item.lightIntensity,
-        })
-      );
+      if (data.error) {
+        console.warn("API returned an error:", data.error)
+        setError(data.error)
+      }
 
-      setChartData(formattedData);
+      // Use the data we got, even if it's partial
+      if (data.chartData && data.chartData.length > 0) {
+        setChartData(data.chartData)
+      } else {
+        setError("No data available from API")
+        setChartData([])
+      }
     } catch (err) {
-      console.error("Error fetching environment data:", err);
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
-      // Fall back to mock data if API fails
-      setChartData(generateMockData(hours));
+      console.error("Error fetching environment data:", err)
+      setError(err instanceof Error ? err.message : "Unknown error")
+      setChartData([])
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  // Mock data generator as fallback
-  const generateMockData = (hours: number) => {
-    const data = [];
-    const now = new Date();
-
-    for (let i = hours; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-      data.push({
-        time: time.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        temperature: 25 + Math.sin(i / 3) * 5 + Math.random() * 2,
-        humidity: 60 + Math.sin(i / 2) * 15 + Math.random() * 5,
-        soilMoisture: 50 + Math.cos(i / 4) * 10 + Math.random() * 3,
-        lightIntensity: 1000 + Math.sin(i / 2) * 500 + Math.random() * 100,
-      });
-    }
-
-    return data;
-  };
+  }
 
   // Load initial data
   useEffect(() => {
-    const hours = Number.parseInt(timeRange.replace("h", ""));
-    fetchEnvironmentData(hours);
+    fetchEnvironmentData()
 
     // Set up polling for real-time updates (every 30 seconds)
     const intervalId = setInterval(() => {
-      fetchEnvironmentData(hours);
-    }, 30000);
+      fetchEnvironmentData()
+    }, 30000)
 
-    return () => clearInterval(intervalId);
-  }, [timeRange]);
+    return () => clearInterval(intervalId)
+  }, [timeRange])
 
   const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value);
-    const hours = Number.parseInt(value.replace("h", ""));
-    fetchEnvironmentData(hours);
-  };
+    setTimeRange(value)
+    // We'll refetch data when the time range changes
+    fetchEnvironmentData()
+  }
+
+  // Check if we have data for each parameter
+  const hasTemperatureData = chartData.some((point) => point.temperature !== undefined)
+  const hasHumidityData = chartData.some((point) => point.humidity !== undefined)
+  const hasSoilMoistureData = chartData.some((point) => point.soilMoisture !== undefined)
+  const hasLightIntensityData = chartData.some((point) => point.lightIntensity !== undefined)
 
   return (
     <Card className="col-span-3">
@@ -155,14 +111,9 @@ export default function EnvironmentCharts() {
                 fill="none"
                 viewBox="0 0 24 24"
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
+
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+
                 <path
                   className="opacity-75"
                   fill="currentColor"
@@ -172,166 +123,151 @@ export default function EnvironmentCharts() {
               Updating...
             </div>
           )}
-          {error && (
-            <div className="text-sm text-red-500">
-              Error loading data. Using fallback data.
-            </div>
-          )}
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="all">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Tabs defaultValue="temperature">
           <TabsList className="mb-4">
-            <TabsTrigger value="all">All Parameters</TabsTrigger>
-            <TabsTrigger value="temperature">Temperature</TabsTrigger>
-            <TabsTrigger value="humidity">Humidity</TabsTrigger>
-            <TabsTrigger value="soil">Soil Moisture</TabsTrigger>
-            <TabsTrigger value="light">Light</TabsTrigger>
+            <TabsTrigger value="temperature" disabled={!hasTemperatureData}>
+              Temperature
+            </TabsTrigger>
+            <TabsTrigger value="humidity" disabled={!hasHumidityData}>
+              Humidity
+            </TabsTrigger>
+            <TabsTrigger value="soil" disabled={!hasSoilMoistureData}>
+              Soil Moisture
+            </TabsTrigger>
+            <TabsTrigger value="light" disabled={!hasLightIntensityData}>
+              Light
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="#ef4444"
-                    name="Temperature (°C)"
-                  />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="humidity"
-                    stroke="#3b82f6"
-                    name="Humidity (%)"
-                  />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="soilMoisture"
-                    stroke="#22c55e"
-                    name="Soil Moisture (%)"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="lightIntensity"
-                    stroke="#eab308"
-                    name="Light (lux)"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </TabsContent>
-
           <TabsContent value="temperature">
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="#ef4444"
-                    name="Temperature (°C)"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {hasTemperatureData ? (
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={["auto", "auto"]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="temperature"
+                      stroke="#ef4444"
+                      name="Temperature (°C)"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      connectNulls={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-md">
+                <p className="text-gray-500">No temperature data available</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="humidity">
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="humidity"
-                    stroke="#3b82f6"
-                    name="Humidity (%)"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {hasHumidityData ? (
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="humidity"
+                      stroke="#3b82f6"
+                      name="Humidity (%)"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      connectNulls={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-md">
+                <p className="text-gray-500">No humidity data available</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="soil">
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="soilMoisture"
-                    stroke="#22c55e"
-                    name="Soil Moisture (%)"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {hasSoilMoistureData ? (
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="soilMoisture"
+                      stroke="#22c55e"
+                      name="Soil Moisture (%)"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      connectNulls={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-md">
+                <p className="text-gray-500">No soil moisture data available</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="light">
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="lightIntensity"
-                    stroke="#eab308"
-                    name="Light (lux)"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {hasLightIntensityData ? (
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={[0, "auto"]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="lightIntensity"
+                      stroke="#eab308"
+                      name="Light (lux)"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      connectNulls={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-md">
+                <p className="text-gray-500">No light intensity data available</p>
+              </div>
+            )}
+
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
-  );
+  )
 }
