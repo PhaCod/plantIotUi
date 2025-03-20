@@ -36,13 +36,24 @@ export default function StatsCards() {
     const setupConnection = () => {
       // Reset connection state
       resetConnection()
-
+      iotApi.getFeedLastData("temp").then((data) => {
+        setSensorData((prev) => ({ ...prev, temperature: parseFloat(data.value) }))
+      })
+      iotApi.getFeedLastData("humidity").then((data) => {
+        setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }))
+      })
+      iotApi.getFeedLastData("moisture").then((data) => {
+        setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }))
+      })
+      iotApi.getFeedLastData("light").then((data) => {
+        setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }))
+      })
       // Set a timeout to check if we receive any data
-      connectionTimeout = setTimeout(() => {
-        if (!isConnected) {
-          resetConnection()
-        }
-      }, 5000) // Wait 5 seconds for initial data
+      // connectionTimeout = setTimeout(() => {
+      //   if (!isConnected) {
+      //     resetConnection()
+      //   }
+      // }, 5000) // Wait 5 seconds for initial data
 
       iotApi.subscribeToStream(
         (data) => {
