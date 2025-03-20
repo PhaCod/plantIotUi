@@ -8,8 +8,8 @@ export interface FeedData {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5000";
-const API_FEED_URL = process.env.API_DIRECT;
-const PUBLIC_API_KEY = process.env.API_KEY;
+const API_FEED_URL = process.env.NEXT_PUBLIC_API_DIRECT;
+const PUBLIC_API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
 export class IoTApi {
   private static instance: IoTApi;
@@ -44,7 +44,7 @@ export class IoTApi {
         },
         body: JSON.stringify({ value }),
       });
-      
+      console.log(`Response: ${PUBLIC_API_KEY}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -57,24 +57,21 @@ export class IoTApi {
   }
   public async getFeedLastData(feed: FeedType): Promise<FeedData> {
     try {
-      
-      const response = await fetch(`https://io.adafruit.com/api/v2/blueonline07/feeds/${feed}/data/last`, {
+      const response = await fetch(`${API_FEED_URL}/${feed}/data/last`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "X-AIO-Key": "aio_AWFu55mvdpc0VTCRlhFD8uZPCJex",
+          "X-AIO-Key": PUBLIC_API_KEY || "",
         },
       });
-      console.log(`Hello ${PUBLIC_API_KEY}`)
+      console.log(`Response: ${PUBLIC_API_KEY}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data: FeedData = await response.json();
       return data;
-
-      }
-    catch (error) {
+    } catch (error) {
       console.error(`Failed to get data from ${feed}:`, error);
       throw error;
     }

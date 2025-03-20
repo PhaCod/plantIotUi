@@ -45,7 +45,7 @@ export default function DeviceControl() {
   const [lightsSuccess, setLightsSuccess] = useState(false);
 
   useEffect(() => {
-    let connectionTimeout: NodeJS.Timeout;
+    let connectionTimeout: NodeJS.Timeout = setTimeout(() => {}, 0);
 
     const resetConnection = () => {
       // setIsConnected(false)
