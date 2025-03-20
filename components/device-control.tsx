@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
-import { Droplet, Fan, Lightbulb, Palette, CheckCircle } from "lucide-react"
+import { Droplet, Fan, Lightbulb, Palette, CheckCircle, WifiOff } from "lucide-react"
 import { HexColorPicker } from "react-colorful"
 import { toast } from "@/components/ui/use-toast"
+import { iotApi, FeedType } from "@/lib/api"
 
 export default function DeviceControl() {
   const [waterPump, setWaterPump] = useState(false)
@@ -16,6 +17,7 @@ export default function DeviceControl() {
   const [lightColor, setLightColor] = useState("#22c55e")
   const [lightIntensity, setLightIntensity] = useState(70)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
 
   // Loading states
   const [waterPumpLoading, setWaterPumpLoading] = useState(false)
@@ -28,38 +30,83 @@ export default function DeviceControl() {
   const [fanSuccess, setFanSuccess] = useState(false)
   const [lightsSuccess, setLightsSuccess] = useState(false)
 
+  // Subscribe to real-time updates
+  useEffect(() => {
+    let connectionTimeout: NodeJS.Timeout
+
+    const resetConnection = () => {
+      setIsConnected(false)
+      setWaterPump(false)
+      setFan(false)
+      setLights(false)
+    }
+
+    const setupConnection = () => {
+      // Reset connection state
+      resetConnection()
+
+      // Set a timeout to check if we receive any data
+      connectionTimeout = setTimeout(() => {
+        if (!isConnected) {
+          resetConnection()
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to IoT devices. Please check your connection.",
+            variant: "destructive",
+          })
+        }
+      }, 5000) // Wait 5 seconds for initial data
+
+      iotApi.subscribeToStream(
+        (data) => {
+          setIsConnected(true)
+          // Update states based on received data
+          switch (data.type) {
+            case 'moisture':
+              setWaterPump(data.value === '1')
+              break
+            case 'temp':
+              setFan(data.value === '1')
+              break
+            case 'light':
+              setLightIntensity(Math.min(100, Math.max(0, parseFloat(data.value))))
+              break
+          }
+        },
+        (error) => {
+          resetConnection()
+          toast({
+            title: "Connection Error",
+            description: "Failed to connect to IoT stream. Please refresh the page.",
+            variant: "destructive",
+          })
+        }
+      )
+    }
+
+    setupConnection()
+
+    return () => {
+      clearTimeout(connectionTimeout)
+      iotApi.unsubscribeFromStream()
+    }
+  }, [])
+
   const handleWaterPumpToggle = async () => {
     setWaterPumpLoading(true)
     setWaterPumpSuccess(false)
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "water-pump",
-          action: !waterPump ? "on" : "off",
-        }),
-      })
+      await iotApi.postFeedData('moisture', !waterPump ? '1' : '0')
 
-      if (!response.ok) {
-        throw new Error("Failed to control water pump")
-      }
-
-      // Update state after successful response
       setWaterPump(!waterPump)
       setWaterPumpSuccess(true)
 
-      // Show success message
       toast({
         title: "Water Pump Control",
         description: !waterPump ? "Water pump activated successfully" : "Water pump deactivated successfully",
       })
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
         setWaterPumpSuccess(false)
       }, 3000)
@@ -80,33 +127,16 @@ export default function DeviceControl() {
     setFanSuccess(false)
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "fan",
-          action: !fan ? "on" : "off",
-        }),
-      })
+      await iotApi.postFeedData('temp', !fan ? '1' : '0')
 
-      if (!response.ok) {
-        throw new Error("Failed to control fan")
-      }
-
-      // Update state after successful response
       setFan(!fan)
       setFanSuccess(true)
 
-      // Show success message
       toast({
         title: "Ventilation Fan Control",
         description: !fan ? "Fan activated successfully" : "Fan deactivated successfully",
       })
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
         setFanSuccess(false)
       }, 3000)
@@ -127,35 +157,16 @@ export default function DeviceControl() {
     setLightsSuccess(false)
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "lights",
-          action: !lights ? "on" : "off",
-          color: lightColor,
-          intensity: lightIntensity,
-        }),
-      })
+      await iotApi.postFeedData('light', !lights ? lightIntensity.toString() : '0')
 
-      if (!response.ok) {
-        throw new Error("Failed to control lights")
-      }
-
-      // Update state after successful response
       setLights(!lights)
       setLightsSuccess(true)
 
-      // Show success message
       toast({
         title: "RGB LED Lights Control",
         description: !lights ? "Lights turned on successfully" : "Lights turned off successfully",
       })
 
-      // Reset success indicator after 3 seconds
       setTimeout(() => {
         setLightsSuccess(false)
       }, 3000)
@@ -171,7 +182,7 @@ export default function DeviceControl() {
     }
   }
 
-  const handleLightIntensityChange = (value) => {
+  const handleLightIntensityChange = (value: number) => {
     setLightIntensity(value)
   }
 
@@ -181,25 +192,8 @@ export default function DeviceControl() {
     setApplyingSettings(true)
 
     try {
-      // Send signal to backend
-      const response = await fetch("/api/device-control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          device: "lights",
-          action: "settings",
-          color: lightColor,
-          intensity: lightIntensity,
-        }),
-      })
+      await iotApi.postFeedData('light', lightIntensity.toString())
 
-      if (!response.ok) {
-        throw new Error("Failed to apply light settings")
-      }
-
-      // Show success message
       toast({
         title: "RGB LED Lights Settings",
         description: "Light settings applied successfully",
@@ -218,10 +212,15 @@ export default function DeviceControl() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card>
+      <Card className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
         <CardHeader>
-          <CardTitle>Water Pump Control ⚡</CardTitle>
-          <CardDescription>Control irrigation system</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Water Pump Control ⚡</CardTitle>
+              <CardDescription>Control irrigation system</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 rounded-full flex items-center justify-center bg-blue-100 border-4 border-blue-200 relative">
@@ -237,7 +236,7 @@ export default function DeviceControl() {
               id="water-pump"
               checked={waterPump}
               onCheckedChange={handleWaterPumpToggle}
-              disabled={waterPumpLoading}
+              disabled={waterPumpLoading || !isConnected}
             />
             <div className="grid gap-1.5">
               <label
@@ -246,6 +245,7 @@ export default function DeviceControl() {
               >
                 {waterPump ? "Active" : "Inactive"}
                 {waterPumpLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                {!isConnected && <span className="ml-2 text-sm text-muted-foreground">(Offline)</span>}
               </label>
               <p className="text-sm text-muted-foreground">
                 {waterPump ? "Water pump is running" : "Water pump is off"}
@@ -258,7 +258,7 @@ export default function DeviceControl() {
             variant="outline"
             size="sm"
             onClick={() => handleWaterPumpToggle()}
-            disabled={waterPumpLoading || waterPump}
+            disabled={waterPumpLoading || waterPump || !isConnected}
           >
             {waterPumpLoading && !waterPump ? (
               <span className="flex items-center">
@@ -285,7 +285,7 @@ export default function DeviceControl() {
             variant="outline"
             size="sm"
             onClick={() => handleWaterPumpToggle()}
-            disabled={waterPumpLoading || !waterPump}
+            disabled={waterPumpLoading || !waterPump || !isConnected}
           >
             {waterPumpLoading && waterPump ? (
               <span className="flex items-center">
@@ -311,10 +311,15 @@ export default function DeviceControl() {
         </CardFooter>
       </Card>
 
-      <Card>
+      <Card className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
         <CardHeader>
-          <CardTitle>Ventilation Fan 🌀</CardTitle>
-          <CardDescription>Control air circulation</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Ventilation Fan 🌀</CardTitle>
+              <CardDescription>Control air circulation</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 rounded-full flex items-center justify-center bg-gray-100 border-4 border-gray-200 relative">
@@ -330,7 +335,7 @@ export default function DeviceControl() {
             )}
           </div>
           <div className="flex items-center space-x-4">
-            <Switch id="fan" checked={fan} onCheckedChange={handleFanToggle} disabled={fanLoading} />
+            <Switch id="fan" checked={fan} onCheckedChange={handleFanToggle} disabled={fanLoading || !isConnected} />
             <div className="grid gap-1.5">
               <label
                 htmlFor="fan"
@@ -338,13 +343,14 @@ export default function DeviceControl() {
               >
                 {fan ? "Active" : "Inactive"}
                 {fanLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                {!isConnected && <span className="ml-2 text-sm text-muted-foreground">(Offline)</span>}
               </label>
               <p className="text-sm text-muted-foreground">{fan ? "Fan is running" : "Fan is off"}</p>
             </div>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || fan}>
+          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || fan || !isConnected}>
             {fanLoading && !fan ? (
               <span className="flex items-center">
                 <svg
@@ -366,7 +372,7 @@ export default function DeviceControl() {
               "Turn On"
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || !fan}>
+          <Button variant="outline" size="sm" onClick={() => handleFanToggle()} disabled={fanLoading || !fan || !isConnected}>
             {fanLoading && fan ? (
               <span className="flex items-center">
                 <svg
@@ -391,10 +397,15 @@ export default function DeviceControl() {
         </CardFooter>
       </Card>
 
-      <Card className="md:col-span-2">
+      <Card className={`md:col-span-2 ${!isConnected ? "opacity-50 pointer-events-none" : ""}`}>
         <CardHeader>
-          <CardTitle>RGB LED Lights 💡</CardTitle>
-          <CardDescription>Control grow lights</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>RGB LED Lights 💡</CardTitle>
+              <CardDescription>Control grow lights</CardDescription>
+            </div>
+            {!isConnected && <WifiOff className="h-5 w-5 text-gray-400" />}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row items-center gap-8">
@@ -415,7 +426,7 @@ export default function DeviceControl() {
                 )}
               </div>
               <div className="flex items-center space-x-4">
-                <Switch id="lights" checked={lights} onCheckedChange={handleLightsToggle} disabled={lightsLoading} />
+                <Switch id="lights" checked={lights} onCheckedChange={handleLightsToggle} disabled={lightsLoading || !isConnected} />
                 <div className="grid gap-1.5">
                   <label
                     htmlFor="lights"
@@ -423,6 +434,7 @@ export default function DeviceControl() {
                   >
                     {lights ? "Active" : "Inactive"}
                     {lightsLoading && <span className="ml-2 text-sm text-muted-foreground">(Connecting...)</span>}
+                    {!isConnected && <span className="ml-2 text-sm text-muted-foreground">(Offline)</span>}
                   </label>
                   <p className="text-sm text-muted-foreground">{lights ? "Lights are on" : "Lights are off"}</p>
                 </div>
@@ -441,7 +453,7 @@ export default function DeviceControl() {
                   max={100}
                   step={1}
                   onValueChange={(value) => handleLightIntensityChange(value[0])}
-                  disabled={!lights}
+                  disabled={!lights || !isConnected}
                 />
               </div>
 
@@ -453,7 +465,7 @@ export default function DeviceControl() {
                     size="sm"
                     className="gap-2"
                     onClick={() => setShowColorPicker(!showColorPicker)}
-                    disabled={!lights}
+                    disabled={!lights || !isConnected}
                   >
                     <div className="w-4 h-4 rounded-full" style={{ backgroundColor: lightColor }}></div>
                     <Palette size={14} />
@@ -476,7 +488,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#ef4444" }}
               onClick={() => setLightColor("#ef4444")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -484,7 +496,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#3b82f6" }}
               onClick={() => setLightColor("#3b82f6")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -492,7 +504,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#22c55e" }}
               onClick={() => setLightColor("#22c55e")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -500,7 +512,7 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#eab308" }}
               onClick={() => setLightColor("#eab308")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
             <Button
               size="sm"
@@ -508,10 +520,10 @@ export default function DeviceControl() {
               className="w-8 h-8 p-0"
               style={{ backgroundColor: "#a855f7" }}
               onClick={() => setLightColor("#a855f7")}
-              disabled={!lights}
+              disabled={!lights || !isConnected}
             />
           </div>
-          <Button variant="default" size="sm" disabled={!lights || applyingSettings} onClick={applyLightSettings}>
+          <Button variant="default" size="sm" disabled={!lights || applyingSettings || !isConnected} onClick={applyLightSettings}>
             {applyingSettings ? (
               <span className="flex items-center">
                 <svg

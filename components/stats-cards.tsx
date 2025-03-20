@@ -4,52 +4,108 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Thermometer, Droplets, SunDim, Sprout } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { iotApi } from "@/lib/api"
 
-// Mock data - would be replaced with real sensor data
-const mockSensorData = {
-  temperature: 28.5,
-  humidity: 65,
-  soilMoisture: 45,
-  lightIntensity: 1200,
+interface SensorData {
+  temperature: number | null
+  humidity: number | null
+  soilMoisture: number | null
+  lightIntensity: number | null
+}
+
+const initialSensorData: SensorData = {
+  temperature: null,
+  humidity: null,
+  soilMoisture: null,
+  lightIntensity: null,
 }
 
 export default function StatsCards() {
-  const [sensorData, setSensorData] = useState(mockSensorData)
+  const [sensorData, setSensorData] = useState<SensorData>(initialSensorData)
+  const [isConnected, setIsConnected] = useState(false)
 
-  // Simulate real-time updates
+  // Subscribe to real-time sensor updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSensorData({
-        temperature: mockSensorData.temperature + (Math.random() * 2 - 1),
-        humidity: Math.max(0, Math.min(100, mockSensorData.humidity + (Math.random() * 4 - 2))),
-        soilMoisture: Math.max(0, Math.min(100, mockSensorData.soilMoisture + (Math.random() * 3 - 1.5))),
-        lightIntensity: Math.max(0, mockSensorData.lightIntensity + (Math.random() * 100 - 50)),
-      })
-    }, 5000)
+    let connectionTimeout: NodeJS.Timeout
 
-    return () => clearInterval(interval)
+    const resetConnection = () => {
+      setSensorData(initialSensorData)
+      setIsConnected(false)
+    }
+
+    const setupConnection = () => {
+      // Reset connection state
+      resetConnection()
+
+      // Set a timeout to check if we receive any data
+      connectionTimeout = setTimeout(() => {
+        if (!isConnected) {
+          resetConnection()
+        }
+      }, 5000) // Wait 5 seconds for initial data
+
+      iotApi.subscribeToStream(
+        (data) => {
+          setIsConnected(true)
+          setSensorData((prev) => {
+            switch (data.type) {
+              case 'temp':
+                return { ...prev, temperature: parseFloat(data.value) }
+              case 'humidity':
+                return { ...prev, humidity: parseFloat(data.value) }
+              case 'moisture':
+                return { ...prev, soilMoisture: parseFloat(data.value) }
+              case 'light':
+                return { ...prev, lightIntensity: parseFloat(data.value) }
+              default:
+                return prev
+            }
+          })
+        },
+        (error) => {
+          console.error("Failed to connect to sensor stream:", error)
+          resetConnection()
+        }
+      )
+    }
+
+    setupConnection()
+
+    return () => {
+      clearTimeout(connectionTimeout)
+      iotApi.unsubscribeFromStream()
+    }
   }, [])
 
+  // Format sensor value with fallback
+  const formatSensorValue = (value: number | null, format: (n: number) => string) => {
+    return value !== null ? format(value) : "--"
+  }
+
   // Determine status colors based on thresholds
-  const getTemperatureStatus = (value: number) => {
+  const getTemperatureStatus = (value: number | null) => {
+    if (value === null) return "text-gray-400"
     if (value > 32) return "text-red-500"
     if (value < 18) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getHumidityStatus = (value: number) => {
+  const getHumidityStatus = (value: number | null) => {
+    if (value === null) return "text-gray-400"
     if (value > 80) return "text-red-500"
     if (value < 40) return "text-yellow-500"
     return "text-green-500"
   }
 
-  const getSoilMoistureStatus = (value: number) => {
+  const getSoilMoistureStatus = (value: number | null) => {
+    if (value === null) return "text-gray-400"
     if (value < 30) return "text-red-500"
     if (value > 70) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getLightStatus = (value: number) => {
+  const getLightStatus = (value: number | null) => {
+    if (value === null) return "text-gray-400"
     if (value > 2000) return "text-yellow-500"
     if (value < 500) return "text-blue-500"
     return "text-green-500"
@@ -61,17 +117,17 @@ export default function StatsCards() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Temperature</CardTitle>
-            <Thermometer className="h-4 w-4 text-muted-foreground" />
+            <Thermometer className={`h-4 w-4 ${isConnected ? "text-muted-foreground" : "text-gray-400"}`} />
           </CardHeader>
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={`text-2xl font-bold ${getTemperatureStatus(sensorData.temperature)}`}>
-                  {sensorData.temperature.toFixed(1)}°C
+                  {formatSensorValue(sensorData.temperature, (v) => `${v.toFixed(1)}°C`)}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{`$$T_{air} = ${sensorData.temperature.toFixed(1)}°C$$`}</p>
+                <p>{`$$T_{air} = ${sensorData.temperature?.toFixed(1) ?? "--"}°C$$`}</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground">Optimal range: 18-32°C</p>
@@ -81,17 +137,17 @@ export default function StatsCards() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Air Humidity</CardTitle>
-            <Droplets className="h-4 w-4 text-muted-foreground" />
+            <Droplets className={`h-4 w-4 ${isConnected ? "text-muted-foreground" : "text-gray-400"}`} />
           </CardHeader>
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={`text-2xl font-bold ${getHumidityStatus(sensorData.humidity)}`}>
-                  {sensorData.humidity.toFixed(0)}%
+                  {formatSensorValue(sensorData.humidity, (v) => `${v.toFixed(0)}%`)}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{`$$H_{air} = ${sensorData.humidity.toFixed(0)}\\%$$`}</p>
+                <p>{`$$H_{air} = ${sensorData.humidity?.toFixed(0) ?? "--"}\\%$$`}</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground">Optimal range: 40-80%</p>
@@ -101,17 +157,17 @@ export default function StatsCards() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Soil Moisture</CardTitle>
-            <Sprout className="h-4 w-4 text-muted-foreground" />
+            <Sprout className={`h-4 w-4 ${isConnected ? "text-muted-foreground" : "text-gray-400"}`} />
           </CardHeader>
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={`text-2xl font-bold ${getSoilMoistureStatus(sensorData.soilMoisture)}`}>
-                  {sensorData.soilMoisture.toFixed(0)}%
+                  {formatSensorValue(sensorData.soilMoisture, (v) => `${v.toFixed(0)}%`)}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{`$$H_{soil} = ${sensorData.soilMoisture.toFixed(0)}\\%$$`}</p>
+                <p>{`$$H_{soil} = ${sensorData.soilMoisture?.toFixed(0) ?? "--"}\\%$$`}</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground">Optimal range: 30-70%</p>
@@ -121,17 +177,17 @@ export default function StatsCards() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Light Intensity</CardTitle>
-            <SunDim className="h-4 w-4 text-muted-foreground" />
+            <SunDim className={`h-4 w-4 ${isConnected ? "text-muted-foreground" : "text-gray-400"}`} />
           </CardHeader>
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={`text-2xl font-bold ${getLightStatus(sensorData.lightIntensity)}`}>
-                  {sensorData.lightIntensity.toFixed(0)} lux
+                  {formatSensorValue(sensorData.lightIntensity, (v) => `${v.toFixed(0)} lux`)}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{`$$Lux = ${sensorData.lightIntensity.toFixed(0)}$$`}</p>
+                <p>{`$$Lux = ${sensorData.lightIntensity?.toFixed(0) ?? "--"}$$`}</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground">Optimal range: 500-2000 lux</p>

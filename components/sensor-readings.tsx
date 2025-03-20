@@ -3,52 +3,74 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Thermometer, Droplets, SunDim, Sprout } from "lucide-react"
+import { iotApi } from "@/lib/api"
 
-// Mock data - would be replaced with real sensor data
-const mockSensorData = {
-  temperature: 28.5,
-  humidity: 65,
-  soilMoisture: 45,
-  lightIntensity: 1200,
+interface SensorData {
+  temperature: number
+  humidity: number
+  soilMoisture: number
+  lightIntensity: number
+}
+
+const initialSensorData: SensorData = {
+  temperature: 0,
+  humidity: 0,
+  soilMoisture: 0,
+  lightIntensity: 0,
 }
 
 export default function SensorReadings() {
-  const [sensorData, setSensorData] = useState(mockSensorData)
+  const [sensorData, setSensorData] = useState<SensorData>(initialSensorData)
 
-  // Simulate real-time updates
+  // Subscribe to real-time sensor updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSensorData({
-        temperature: mockSensorData.temperature + (Math.random() * 2 - 1),
-        humidity: Math.max(0, Math.min(100, mockSensorData.humidity + (Math.random() * 4 - 2))),
-        soilMoisture: Math.max(0, Math.min(100, mockSensorData.soilMoisture + (Math.random() * 3 - 1.5))),
-        lightIntensity: Math.max(0, mockSensorData.lightIntensity + (Math.random() * 100 - 50)),
-      })
-    }, 5000)
+    iotApi.subscribeToStream(
+      (data) => {
+        setSensorData((prev) => {
+          switch (data.type) {
+            case 'temp':
+              return { ...prev, temperature: parseFloat(data.value) }
+            case 'humidity':
+              return { ...prev, humidity: parseFloat(data.value) }
+            case 'moisture':
+              return { ...prev, soilMoisture: parseFloat(data.value) }
+            case 'light':
+              return { ...prev, lightIntensity: parseFloat(data.value) }
+            default:
+              return prev
+          }
+        })
+      },
+      (error) => {
+        console.error("Failed to connect to sensor stream:", error)
+      }
+    )
 
-    return () => clearInterval(interval)
+    return () => {
+      iotApi.unsubscribeFromStream()
+    }
   }, [])
 
   // Determine status colors based on thresholds
-  const getTemperatureStatus = (value) => {
+  const getTemperatureStatus = (value: number) => {
     if (value > 32) return "text-red-500"
     if (value < 18) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getHumidityStatus = (value) => {
+  const getHumidityStatus = (value: number) => {
     if (value > 80) return "text-red-500"
     if (value < 40) return "text-yellow-500"
     return "text-green-500"
   }
 
-  const getSoilMoistureStatus = (value) => {
+  const getSoilMoistureStatus = (value: number) => {
     if (value < 30) return "text-red-500"
     if (value > 70) return "text-blue-500"
     return "text-green-500"
   }
 
-  const getLightStatus = (value) => {
+  const getLightStatus = (value: number) => {
     if (value > 2000) return "text-yellow-500"
     if (value < 500) return "text-blue-500"
     return "text-green-500"
