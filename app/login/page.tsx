@@ -6,14 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Metadata } from "next"
-import Image from "next/image"
-import Link from "next/link"
-
-export const metadata: Metadata = {
-  title: "Login",
-  description: "Login to your account",
-}
+import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();

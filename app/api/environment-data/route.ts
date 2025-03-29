@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "../auth/[...nextauth]/route"
 
 // Define types for Adafruit IO data
 interface AdafruitData {
@@ -39,7 +41,7 @@ async function fetchFeedData(feedName: string) {
       `https://io.adafruit.com/api/v2/${ADAFRUIT_USERNAME}/feeds/${feedName}/data?limit=50`,
       {
         headers: {
-          "X-AIO-Key": ADAFRUIT_API_KEY,
+          "X-AIO-Key": ADAFRUIT_API_KEY || "",
         },
         // Add a longer timeout for potentially slow API responses
         signal: AbortSignal.timeout(15000),
@@ -60,7 +62,15 @@ async function fetchFeedData(feedName: string) {
 }
 
 export async function GET(request: Request) {
-  // Get the timeRange from the query parameters
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url)
   const timeRange = searchParams.get("timeRange") || "6h"
 
@@ -172,10 +182,10 @@ export async function GET(request: Request) {
       const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
       // Find data points for this timestamp
-      const tempPoint = tempPoints.find((p) => p.timestamp === timestamp)
-      const humidityPoint = humidityPoints.find((p) => p.timestamp === timestamp)
-      const soilMoisturePoint = soilMoisturePoints.find((p) => p.timestamp === timestamp)
-      const lightIntensityPoint = lightIntensityPoints.find((p) => p.timestamp === timestamp)
+      const tempPoint = tempPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const humidityPoint = humidityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const soilMoisturePoint = soilMoisturePoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const lightIntensityPoint = lightIntensityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
 
       // Combine data
       return {

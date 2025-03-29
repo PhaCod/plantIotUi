@@ -172,10 +172,10 @@ export async function GET(request: Request) {
       const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
       // Find data points for this timestamp
-      const tempPoint = tempPoints.find((p) => p.timestamp === timestamp)
-      const humidityPoint = humidityPoints.find((p) => p.timestamp === timestamp)
-      const soilMoisturePoint = soilMoisturePoints.find((p) => p.timestamp === timestamp)
-      const lightIntensityPoint = lightIntensityPoints.find((p) => p.timestamp === timestamp)
+      const tempPoint = tempPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const humidityPoint = humidityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const soilMoisturePoint = soilMoisturePoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const lightIntensityPoint = lightIntensityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
 
       // Combine data
       return {
