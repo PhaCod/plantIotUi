@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Thermometer, Droplets, SunDim, Sprout } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { iotApi } from "@/lib/api"
+import { iotApi } from "@/app/api/iotApi/route";
 
 interface SensorData {
   temperature: number | null
@@ -26,66 +26,50 @@ export default function StatsCards() {
 
   // Subscribe to real-time sensor updates
   useEffect(() => {
-    let connectionTimeout: NodeJS.Timeout
-
     const resetConnection = () => {
-      setSensorData(initialSensorData)
-      setIsConnected(false)
-    }
+      setSensorData(initialSensorData);
+      setIsConnected(false);
+    };
 
     const setupConnection = () => {
-      // Reset connection state
-      resetConnection()
+      resetConnection();
       iotApi.getFeedLastData("temp").then((data) => {
-        setSensorData((prev) => ({ ...prev, temperature: parseFloat(data.value) }))
-      })
+        setSensorData((prev) => ({ ...prev, temperature: parseFloat(data.value) }));
+      });
       iotApi.getFeedLastData("humidity").then((data) => {
-        setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }))
-      })
+        setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }));
+      });
       iotApi.getFeedLastData("moisture").then((data) => {
-        setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }))
-      })
+        setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }));
+      });
       iotApi.getFeedLastData("light").then((data) => {
-        setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }))
-      })
-      // Set a timeout to check if we receive any data
-      // connectionTimeout = setTimeout(() => {
-      //   if (!isConnected) {
-      //     resetConnection()
-      //   }
-      // }, 5000) // Wait 5 seconds for initial data
+        setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }));
+      });
 
-      iotApi.subscribeToStream(
-        (data) => {
-          setIsConnected(true)
-          setSensorData((prev) => {
-            switch (data.type) {
-              case 'temp':
-                return { ...prev, temperature: parseFloat(data.value) }
-              case 'humidity':
-                return { ...prev, humidity: parseFloat(data.value) }
-              case 'moisture':
-                return { ...prev, soilMoisture: parseFloat(data.value) }
-              case 'light':
-                return { ...prev, lightIntensity: parseFloat(data.value) }
-              default:
-                return prev
-            }
-          })
-        },
-        (error) => {
-          console.error("Failed to connect to sensor stream:", error)
-          resetConnection()
-        }
-      )
-    }
+      iotApi.subscribeToStream((data) => {
+        setIsConnected(true);
+        setSensorData((prev) => {
+          switch (data.topic) {
+            case "temp":
+              return { ...prev, temperature: parseFloat(data.value) };
+            case "humidity":
+              return { ...prev, humidity: parseFloat(data.value) };
+            case "moisture":
+              return { ...prev, soilMoisture: parseFloat(data.value) };
+            case "light":
+              return { ...prev, lightIntensity: parseFloat(data.value) };
+            default:
+              return prev;
+          }
+        });
+      });
+    };
 
-    setupConnection()
+    setupConnection();
 
     return () => {
-      clearTimeout(connectionTimeout)
-      iotApi.unsubscribeFromStream()
-    }
+      iotApi.unsubscribeFromStream();
+    };
   }, [])
 
   // Format sensor value with fallback
@@ -208,4 +192,3 @@ export default function StatsCards() {
     </TooltipProvider>
   )
 }
-

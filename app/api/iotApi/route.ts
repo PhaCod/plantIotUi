@@ -57,7 +57,7 @@ export class IoTApi {
       throw error;
     }
   }
-  
+
   public async getFeedLastData(feed: FeedType): Promise<FeedData> {
     try {
       const response = await fetch(`${API_FEED_URL}/${feed}/data/last`, {

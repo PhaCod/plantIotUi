@@ -30,8 +30,8 @@ const ADAFRUIT_USERNAME = process.env.NEXT_PUBLIC_API_USERNAME
 const FEEDS = {
   temperature: "temp",
   humidity: "humidity",
-  soilMoisture: "moisture", // Changed from "soil-moisture" to "moisture"
-  lightIntensity: "light", // Changed from "light-intensity" to "light"
+  soilMoisture: "moisture",
+  lightIntensity: "light",
 }
 
 // Function to fetch data from a single feed
