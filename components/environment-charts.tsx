@@ -85,6 +85,9 @@ export default function EnvironmentCharts() {
   const hasSoilMoistureData = chartData.some((point) => point.soilMoisture !== undefined)
   const hasLightIntensityData = chartData.some((point) => point.lightIntensity !== undefined)
 
+  // Reverse the chartData array to display the newest data on the right
+  const reversedChartData = [...chartData].reverse();
+
   return (
     <Card className="col-span-3">
       <CardHeader>
@@ -154,7 +157,7 @@ export default function EnvironmentCharts() {
             {hasTemperatureData ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={reversedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis domain={["auto", "auto"]} />
@@ -183,7 +186,7 @@ export default function EnvironmentCharts() {
             {hasHumidityData ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={reversedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis domain={[0, 100]} />
@@ -212,7 +215,7 @@ export default function EnvironmentCharts() {
             {hasSoilMoistureData ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={reversedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis domain={[0, 100]} />
@@ -241,7 +244,7 @@ export default function EnvironmentCharts() {
             {hasLightIntensityData ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={reversedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis domain={[0, "auto"]} />
@@ -264,7 +267,6 @@ export default function EnvironmentCharts() {
                 <p className="text-gray-500">No light intensity data available</p>
               </div>
             )}
-
           </TabsContent>
         </Tabs>
       </CardContent>

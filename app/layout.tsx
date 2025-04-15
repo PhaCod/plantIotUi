@@ -9,8 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "IoT Greenhouse Monitoring System",
-  description: "Real-time monitoring and control for smart greenhouses",
-    generator: 'v0.dev'
+  description: "Real-time monitoring and control for smart greenhouses"
 }
 
 export default function RootLayout({

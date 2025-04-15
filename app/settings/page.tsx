@@ -1,10 +1,6 @@
-import type { Metadata } from "next"
-import { SettingsForm } from "@/components/settings-form"
+"use client"
 
-export const metadata: Metadata = {
-  title: "Settings",
-  description: "Manage your account and system preferences",
-}
+import { SettingsForm } from "@/components/settings-form"
 
 export default function SettingsPage() {
   return (

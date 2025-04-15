@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Gauge, Bell, Activity, Settings, BarChart3, User } from "lucide-react"
+import { Gauge, BellRing, Bell, Activity, Settings, BarChart3, User } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,39 @@ import EnvironmentCharts from "@/components/environment-charts"
 import DeviceControl from "@/components/device-control"
 import AlertSystem from "@/components/alert-system"
 import ActivityLog from "@/components/activity-log" // Import ActivityLog component
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 export default function Dashboard() {
   const [activeAlerts, setActiveAlerts] = useState(3)
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubscribe = async () => {
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to subscribe. Please try again.");
+      }
+
+      setError("");
+      alert("Subscription successful!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    }
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -34,11 +64,37 @@ export default function Dashboard() {
             <Settings size={16} />
             Settings
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 relative">
-            <Bell size={16} />
-            Alerts
-            {activeAlerts > 0 && <Badge className="absolute -top-2 -right-2 bg-red-500">{activeAlerts}</Badge>}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 relative">
+                <BellRing size={16} />
+                Subscribe
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Subscribe to Alerts</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Enter your email address to receive notifications from the system.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="w-full"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <Button onClick={handleSubscribe}>Subscribe</Button>
+
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
