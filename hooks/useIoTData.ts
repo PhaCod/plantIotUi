@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { iotApi, FeedType, FeedData } from '@/lib/api';
+import { io } from 'socket.io-client';
 
 interface IoTDataState {
   temp: string;
@@ -22,47 +23,45 @@ const initialState: IoTDataState = {
   light: '',
 };
 
+const socket = io('http://127.0.0.1:5000'); 
+
 export function useIoTData(): UseIoTDataReturn {
   const [data, setData] = useState<IoTDataState>(initialState);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    iotApi.checkHealth()
-      .then(() => setIsConnected(true))
-      .catch((err) => setError(err));
+    socket.on('connect', () => {
+      setIsConnected(true);
+      console.log('Connected to server');
+    });
 
-    iotApi.subscribeToStream(
-      (newData: FeedData) => {
-        setData((prevData) => ({
-          ...prevData,
-          [newData.type]: newData.value,
-        }));
-      },
-      (err: Event) => {
-        setIsConnected(false);
-        setError(new Error('Connection lost'));
-      }
-    );
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+      setError(new Error('Disconnected from server'));
+      console.log('Disconnected from server');
+    });
+
+    socket.on('message', (message: FeedData) => {
+      setData((prevData) => ({
+        ...prevData,
+        [message.type]: message.value,
+      }));
+    });
 
     return () => {
-      iotApi.unsubscribeFromStream();
+      socket.disconnect();
     };
   }, []);
 
   const sendData = async (feed: FeedType, value: string) => {
     try {
-      await iotApi.postFeedData(feed, value);
+      socket.emit('message', { type: feed, value });
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to send data'));
       throw err;
     }
   };
 
-  return {
-    data,
-    isConnected,
-    error,
-    sendData,
-  };
-} 
+  return { data, isConnected, error, sendData };
+}

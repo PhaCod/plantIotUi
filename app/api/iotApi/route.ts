@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getSession } from "next-auth/react";
 
 // Types for IoT data
 export type FeedType = "temp" | "humidity" | "moisture" | "light" | "pump" | "fan" | "led";
@@ -38,15 +39,16 @@ export class IoTApi {
 
   public async postFeedData(feed: FeedType, value: string): Promise<string> {
     try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
       const response = await fetch(`${API_BASE_URL}/devices/${feed}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
         },
         body: JSON.stringify({ value }),
       });
-      console.log(`Response: ${PUBLIC_API_KEY}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -57,7 +59,7 @@ export class IoTApi {
       throw error;
     }
   }
-  
+
   public async getFeedLastData(feed: FeedType): Promise<FeedData> {
     try {
       const response = await fetch(`${API_FEED_URL}/${feed}/data/last`, {
@@ -75,6 +77,41 @@ export class IoTApi {
       return data;
     } catch (error) {
       console.error(`Failed to get data from ${feed}:`, error);
+      throw error;
+    }
+  }
+
+  public async getThreshold(feed: FeedType): Promise<{ lower: number; upper: number }> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/config`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Extract and return the threshold for the specific feed type
+      if (data[feed]) {
+        return data[feed];
+      } else {
+        throw new Error(`Threshold data for feed type '${feed}' not found`);
+      }
+    } catch (error) {
+      console.error(`Failed to get threshold for ${feed}:`, error);
       throw error;
     }
   }

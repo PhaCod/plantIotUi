@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Gauge, Bell, Activity, Settings, BarChart3, User } from "lucide-react"
+import { Gauge, BellRing, Bell, Activity, Settings, BarChart3, User } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,81 @@ import EnvironmentCharts from "@/components/environment-charts"
 import DeviceControl from "@/components/device-control"
 import AlertSystem from "@/components/alert-system"
 import ActivityLog from "@/components/activity-log" // Import ActivityLog component
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { signOut } from "next-auth/react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { iotApi } from "@/app/api/iotApi/route";
 
 export default function Dashboard() {
-  const [activeAlerts, setActiveAlerts] = useState(3)
+  const [activeAlerts, setActiveAlerts] = useState(3);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  const [temperatureThreshold, setTemperatureThreshold] = useState({ lower: 0, upper: 0 });
+  const [humidityThreshold, setHumidityThreshold] = useState({ lower: 0, upper: 0 });
+  const [soilMoistureThreshold, setSoilMoistureThreshold] = useState({ lower: 0, upper: 0 });
+  const [lightThreshold, setLightThreshold] = useState({ lower: 0, upper: 0 });
+
+  const [isTemperatureChanged, setIsTemperatureChanged] = useState(false);
+  const [isHumidityChanged, setIsHumidityChanged] = useState(false);
+  const [isSoilMoistureChanged, setIsSoilMoistureChanged] = useState(false);
+  const [isLightChanged, setIsLightChanged] = useState(false);
+
+  useEffect(() => {
+    async function fetchThresholds() {
+      try {
+        const temp = await iotApi.getThreshold("temp");
+        setTemperatureThreshold(temp);
+
+        const humidity = await iotApi.getThreshold("humidity");
+        setHumidityThreshold(humidity);
+
+        const soilMoisture = await iotApi.getThreshold("moisture");
+        setSoilMoistureThreshold(soilMoisture);
+
+        const light = await iotApi.getThreshold("light");
+        setLightThreshold(light);
+      } catch (error) {
+        console.error("Failed to fetch thresholds:", error);
+      }
+    }
+
+    fetchThresholds();
+  }, []);
+
+  const handleSubscribe = async () => {
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/subcription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to subscribe. Please try again.");
+      }
+
+      setError("");
+      alert("Subscription successful!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    }
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -34,11 +106,37 @@ export default function Dashboard() {
             <Settings size={16} />
             Settings
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 relative">
-            <Bell size={16} />
-            Alerts
-            {activeAlerts > 0 && <Badge className="absolute -top-2 -right-2 bg-red-500">{activeAlerts}</Badge>}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 relative">
+                <BellRing size={16} />
+                Subscribe
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Subscribe to Alerts</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Enter your email address to receive notifications from the system.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="w-full"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <Button onClick={handleSubscribe}>Subscribe</Button>
+
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
@@ -50,7 +148,7 @@ export default function Dashboard() {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Log out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut()}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -61,7 +159,7 @@ export default function Dashboard() {
       </div>
 
       <Tabs defaultValue="dashboard" className="mb-6">
-        <TabsList className="grid grid-cols-4 mb-4">
+        <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 size={16} />
             Dashboard
@@ -78,6 +176,10 @@ export default function Dashboard() {
             <Bell size={16} />
             Alerts
             {activeAlerts > 0 && <Badge className="ml-1 bg-red-500">{activeAlerts}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings size={16} />
+            Thresholds
           </TabsTrigger>
         </TabsList>
 
@@ -97,6 +199,146 @@ export default function Dashboard() {
 
         <TabsContent value="alerts">
           <AlertSystem onAlertCountChange={setActiveAlerts} />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Temperature Thresholds</CardTitle>
+                <CardDescription>Set min and max temperature values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={temperatureThreshold.lower}
+                    onChange={(e) => {
+                      setTemperatureThreshold({ ...temperatureThreshold, lower: Number(e.target.value) });
+                      setIsTemperatureChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={temperatureThreshold.upper}
+                    onChange={(e) => {
+                      setTemperatureThreshold({ ...temperatureThreshold, upper: Number(e.target.value) });
+                      setIsTemperatureChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isTemperatureChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Humidity Thresholds</CardTitle>
+                <CardDescription>Set min and max humidity values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={humidityThreshold.lower}
+                    onChange={(e) => {
+                      setHumidityThreshold({ ...humidityThreshold, lower: Number(e.target.value) });
+                      setIsHumidityChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={humidityThreshold.upper}
+                    onChange={(e) => {
+                      setHumidityThreshold({ ...humidityThreshold, upper: Number(e.target.value) });
+                      setIsHumidityChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isHumidityChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Soil Moisture Thresholds</CardTitle>
+                <CardDescription>Set min and max soil moisture values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={soilMoistureThreshold.lower}
+                    onChange={(e) => {
+                      setSoilMoistureThreshold({ ...soilMoistureThreshold, lower: Number(e.target.value) });
+                      setIsSoilMoistureChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={soilMoistureThreshold.upper}
+                    onChange={(e) => {
+                      setSoilMoistureThreshold({ ...soilMoistureThreshold, upper: Number(e.target.value) });
+                      setIsSoilMoistureChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isSoilMoistureChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Light Thresholds</CardTitle>
+                <CardDescription>Set min and max light values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={lightThreshold.lower}
+                    onChange={(e) => {
+                      setLightThreshold({ ...lightThreshold, lower: Number(e.target.value) });
+                      setIsLightChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={lightThreshold.upper}
+                    onChange={(e) => {
+                      setLightThreshold({ ...lightThreshold, upper: Number(e.target.value) });
+                      setIsLightChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isLightChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
