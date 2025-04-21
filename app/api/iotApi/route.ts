@@ -116,6 +116,35 @@ export class IoTApi {
     }
   }
 
+  public async setThreshold(topic: string, lower: number, upper: number): Promise<string> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+        body: JSON.stringify({ topic, lower, upper }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error("Failed to set threshold:", error);
+      throw error;
+    }
+  }
+
   public subscribeToStream(
     onData: (data: FeedData) => void,
     onError?: (error: Event) => void

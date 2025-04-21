@@ -79,6 +79,28 @@ export class IoTApi {
     }
   }
 
+  public async setThreshold(topic: string, lower: number, upper: number): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ topic, lower, upper }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error("Failed to set threshold:", error);
+      throw error;
+    }
+  }
+
   public subscribeToStream(
     onData: (data: FeedData) => void,
     onError?: (error: Event) => void

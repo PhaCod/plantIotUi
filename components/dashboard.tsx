@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,7 @@ import ActivityLog from "@/components/activity-log" // Import ActivityLog compon
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { signOut } from "next-auth/react";
+import { ForwardedRef } from "react"; // Add this import if not already present
 import {
   Card,
   CardContent,
@@ -32,12 +33,21 @@ import {
 import { iotApi } from "@/app/api/iotApi/route";
 import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { getSession } from "next-auth/react";
+import { toast } from "@/components/ui/use-toast";
 
 interface CustomJwtPayload extends JwtPayload {
   role?: string;
 }
 
 export default function Dashboard() {
+  
+  
+  interface StatsCardsRef {
+    updateSensorData: (topic: string, lower: number, upper: number) => void;
+  }
+  
+  const statsCardsRef = useRef<StatsCardsRef | null>(null);
+
   const [activeAlerts, setActiveAlerts] = useState(3);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -115,6 +125,39 @@ export default function Dashboard() {
     }
   };
 
+  const handleSetThreshold = async (topic: string, lower: number, upper: number) => {
+    try {
+      const response = await iotApi.setThreshold(topic, lower, upper);
+      toast({
+        title: "Threshold Updated",
+        description: `The ${topic} thresholds have been successfully updated.`,
+      });
+
+      // Update the thresholds in StatsCards
+      if (statsCardsRef.current) {
+        statsCardsRef.current.updateSensorData(topic, lower, upper);
+      }
+
+      // Reset the change state for all topics
+      if (topic === "humidity") {
+        setIsHumidityChanged(false);
+      } else if (topic === "temp") {
+        setIsTemperatureChanged(false);
+      } else if (topic === "moisture") {
+        setIsSoilMoistureChanged(false);
+      } else if (topic === "light") {
+        setIsLightChanged(false);
+      }
+    } catch (error) {
+      console.error("Failed to set threshold:", error);
+      toast({
+        title: "Error",
+        description: "Failed to set threshold. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <header className="flex justify-between items-center mb-6">
@@ -162,7 +205,7 @@ export default function Dashboard() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
                 <User size={16} />
-                Admin User
+                {userRole === 'admin' ? 'Admin' : 'User'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -176,11 +219,11 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <StatsCards />
+        <StatsCards ref={statsCardsRef} />
       </div>
 
       <Tabs defaultValue="dashboard" className="mb-6">
-        <TabsList className="grid grid-cols-5 mb-4">
+        <TabsList className={`grid ${userRole === 'admin' ? 'grid-cols-5' : 'grid-cols-3'} mb-4`}>
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 size={16} />
             Dashboard
@@ -261,7 +304,13 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="default" disabled={!isTemperatureChanged}>Save</Button>
+                  <Button
+                    variant="default"
+                    disabled={!isTemperatureChanged}
+                    onClick={() => handleSetThreshold("temp", temperatureThreshold.lower, temperatureThreshold.upper)}
+                  >
+                    Save
+                  </Button>
                 </CardFooter>
               </Card>
 
@@ -295,7 +344,13 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="default" disabled={!isHumidityChanged}>Save</Button>
+                  <Button
+                    variant="default"
+                    disabled={!isHumidityChanged}
+                    onClick={() => handleSetThreshold("humidity", humidityThreshold.lower, humidityThreshold.upper)}
+                  >
+                    Save
+                  </Button>
                 </CardFooter>
               </Card>
 
@@ -329,7 +384,13 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="default" disabled={!isSoilMoistureChanged}>Save</Button>
+                  <Button
+                    variant="default"
+                    disabled={!isSoilMoistureChanged}
+                    onClick={() => handleSetThreshold("moisture", soilMoistureThreshold.lower, soilMoistureThreshold.upper)}
+                  >
+                    Save
+                  </Button>
                 </CardFooter>
               </Card>
 
@@ -363,7 +424,13 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="default" disabled={!isLightChanged}>Save</Button>
+                  <Button
+                    variant="default"
+                    disabled={!isLightChanged}
+                    onClick={() => handleSetThreshold("light", lightThreshold.lower, lightThreshold.upper)}
+                  >
+                    Save
+                  </Button>
                 </CardFooter>
               </Card>
             </div>

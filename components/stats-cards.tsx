@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { forwardRef, useImperativeHandle, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Thermometer, Droplets, SunDim, Sprout } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -24,7 +24,7 @@ const initialSensorData: SensorData = {
   lightIntensity: null,
 }
 
-export default function StatsCards() {
+const StatsCards = forwardRef((props, ref) => {
   const [sensorData, setSensorData] = useState<SensorData>(initialSensorData)
   const [isConnected, setIsConnected] = useState(false)
 
@@ -100,6 +100,23 @@ export default function StatsCards() {
       iotApi.unsubscribeFromStream();
     };
   }, [])
+
+  useImperativeHandle(ref, () => ({
+    updateSensorData: (topic: string, lower: number, upper: number) => {
+      setSensorData((prev) => {
+        if (topic === "humidity") {
+          return { ...prev, humidityThreshold: { lower, upper } };
+        } else if (topic === "temp") {
+          return { ...prev, temperatureThreshold: { lower, upper } };
+        } else if (topic === "moisture") {
+          return { ...prev, soilMoistureThreshold: { lower, upper } };
+        } else if (topic === "light") {
+          return { ...prev, lightIntensityThreshold: { lower, upper } };
+        }
+        return prev;
+      });
+    },
+  }));
 
   // Format sensor value with fallback
   const formatSensorValue = (value: number | null, format: (n: number) => string) => {
@@ -228,4 +245,6 @@ export default function StatsCards() {
       </>
     </TooltipProvider>
   )
-}
+})
+
+export default StatsCards;
