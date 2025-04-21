@@ -30,11 +30,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { iotApi } from "@/app/api/iotApi/route";
+import { jwtDecode, JwtPayload } from 'jwt-decode';
+import { getSession } from "next-auth/react";
+
+interface CustomJwtPayload extends JwtPayload {
+  role?: string;
+}
 
 export default function Dashboard() {
   const [activeAlerts, setActiveAlerts] = useState(3);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    // Retrieve session and decode the JWT to get the user's role
+    async function fetchUserRole() {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+      if (token) {
+        const decoded = jwtDecode<CustomJwtPayload>(token);
+        setUserRole(decoded.role || ""); // Assuming the role is stored in the 'role' claim
+      }
+    }
+
+    fetchUserRole();
+  }, []);
 
   const [temperatureThreshold, setTemperatureThreshold] = useState({ lower: 0, upper: 0 });
   const [humidityThreshold, setHumidityThreshold] = useState({ lower: 0, upper: 0 });
@@ -164,10 +185,12 @@ export default function Dashboard() {
             <BarChart3 size={16} />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="devices" className="flex items-center gap-2">
-            <Gauge size={16} />
-            Device Control
-          </TabsTrigger>
+          {userRole === 'admin' && (
+            <TabsTrigger value="devices" className="flex items-center gap-2">
+              <Gauge size={16} />
+              Device Control
+            </TabsTrigger>
+          )}
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <Activity size={16} />
             Activity
@@ -177,19 +200,23 @@ export default function Dashboard() {
             Alerts
             {activeAlerts > 0 && <Badge className="ml-1 bg-red-500">{activeAlerts}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings size={16} />
-            Thresholds
-          </TabsTrigger>
+          {userRole === 'admin' && (
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings size={16} />
+              Thresholds
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
           <EnvironmentCharts />
         </TabsContent>
 
-        <TabsContent value="devices">
-          <DeviceControl />
-        </TabsContent>
+        {userRole === 'admin' && (
+          <TabsContent value="devices">
+            <DeviceControl />
+          </TabsContent>
+        )}
 
         <TabsContent value="activity">
           <div className="grid grid-cols-1 gap-6">
@@ -201,145 +228,147 @@ export default function Dashboard() {
           <AlertSystem onAlertCountChange={setActiveAlerts} />
         </TabsContent>
 
-        <TabsContent value="settings">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Temperature Thresholds</CardTitle>
-                <CardDescription>Set min and max temperature values</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    className="w-full"
-                    value={temperatureThreshold.lower}
-                    onChange={(e) => {
-                      setTemperatureThreshold({ ...temperatureThreshold, lower: Number(e.target.value) });
-                      setIsTemperatureChanged(true);
-                    }}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    className="w-full"
-                    value={temperatureThreshold.upper}
-                    onChange={(e) => {
-                      setTemperatureThreshold({ ...temperatureThreshold, upper: Number(e.target.value) });
-                      setIsTemperatureChanged(true);
-                    }}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="default" disabled={!isTemperatureChanged}>Save</Button>
-              </CardFooter>
-            </Card>
+        {userRole === 'admin' && (
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Temperature Thresholds</CardTitle>
+                  <CardDescription>Set min and max temperature values</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      className="w-full"
+                      value={temperatureThreshold.lower}
+                      onChange={(e) => {
+                        setTemperatureThreshold({ ...temperatureThreshold, lower: Number(e.target.value) });
+                        setIsTemperatureChanged(true);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      className="w-full"
+                      value={temperatureThreshold.upper}
+                      onChange={(e) => {
+                        setTemperatureThreshold({ ...temperatureThreshold, upper: Number(e.target.value) });
+                        setIsTemperatureChanged(true);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="default" disabled={!isTemperatureChanged}>Save</Button>
+                </CardFooter>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Humidity Thresholds</CardTitle>
-                <CardDescription>Set min and max humidity values</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    className="w-full"
-                    value={humidityThreshold.lower}
-                    onChange={(e) => {
-                      setHumidityThreshold({ ...humidityThreshold, lower: Number(e.target.value) });
-                      setIsHumidityChanged(true);
-                    }}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    className="w-full"
-                    value={humidityThreshold.upper}
-                    onChange={(e) => {
-                      setHumidityThreshold({ ...humidityThreshold, upper: Number(e.target.value) });
-                      setIsHumidityChanged(true);
-                    }}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="default" disabled={!isHumidityChanged}>Save</Button>
-              </CardFooter>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Humidity Thresholds</CardTitle>
+                  <CardDescription>Set min and max humidity values</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      className="w-full"
+                      value={humidityThreshold.lower}
+                      onChange={(e) => {
+                        setHumidityThreshold({ ...humidityThreshold, lower: Number(e.target.value) });
+                        setIsHumidityChanged(true);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      className="w-full"
+                      value={humidityThreshold.upper}
+                      onChange={(e) => {
+                        setHumidityThreshold({ ...humidityThreshold, upper: Number(e.target.value) });
+                        setIsHumidityChanged(true);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="default" disabled={!isHumidityChanged}>Save</Button>
+                </CardFooter>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Soil Moisture Thresholds</CardTitle>
-                <CardDescription>Set min and max soil moisture values</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    className="w-full"
-                    value={soilMoistureThreshold.lower}
-                    onChange={(e) => {
-                      setSoilMoistureThreshold({ ...soilMoistureThreshold, lower: Number(e.target.value) });
-                      setIsSoilMoistureChanged(true);
-                    }}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    className="w-full"
-                    value={soilMoistureThreshold.upper}
-                    onChange={(e) => {
-                      setSoilMoistureThreshold({ ...soilMoistureThreshold, upper: Number(e.target.value) });
-                      setIsSoilMoistureChanged(true);
-                    }}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="default" disabled={!isSoilMoistureChanged}>Save</Button>
-              </CardFooter>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Soil Moisture Thresholds</CardTitle>
+                  <CardDescription>Set min and max soil moisture values</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      className="w-full"
+                      value={soilMoistureThreshold.lower}
+                      onChange={(e) => {
+                        setSoilMoistureThreshold({ ...soilMoistureThreshold, lower: Number(e.target.value) });
+                        setIsSoilMoistureChanged(true);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      className="w-full"
+                      value={soilMoistureThreshold.upper}
+                      onChange={(e) => {
+                        setSoilMoistureThreshold({ ...soilMoistureThreshold, upper: Number(e.target.value) });
+                        setIsSoilMoistureChanged(true);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="default" disabled={!isSoilMoistureChanged}>Save</Button>
+                </CardFooter>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Light Thresholds</CardTitle>
-                <CardDescription>Set min and max light values</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    className="w-full"
-                    value={lightThreshold.lower}
-                    onChange={(e) => {
-                      setLightThreshold({ ...lightThreshold, lower: Number(e.target.value) });
-                      setIsLightChanged(true);
-                    }}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    className="w-full"
-                    value={lightThreshold.upper}
-                    onChange={(e) => {
-                      setLightThreshold({ ...lightThreshold, upper: Number(e.target.value) });
-                      setIsLightChanged(true);
-                    }}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="default" disabled={!isLightChanged}>Save</Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </TabsContent>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Light Thresholds</CardTitle>
+                  <CardDescription>Set min and max light values</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      className="w-full"
+                      value={lightThreshold.lower}
+                      onChange={(e) => {
+                        setLightThreshold({ ...lightThreshold, lower: Number(e.target.value) });
+                        setIsLightChanged(true);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      className="w-full"
+                      value={lightThreshold.upper}
+                      onChange={(e) => {
+                        setLightThreshold({ ...lightThreshold, upper: Number(e.target.value) });
+                        setIsLightChanged(true);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="default" disabled={!isLightChanged}>Save</Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
