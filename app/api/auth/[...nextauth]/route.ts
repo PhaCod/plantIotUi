@@ -41,24 +41,25 @@ export const authOptions: NextAuthOptions = {
         try {
           // First try to authenticate with backend
           try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
+            const response = await fetch("http://127.0.0.1:5000/users/login", {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                username: credentials?.username,
+                email: credentials?.username, // Use email instead of username
                 password: credentials?.password,
               }),
             });
-
+            console.log('Response from backend:', response);
             if (response.ok) {
               const user = await response.json();
+              console.log('User from backend:', user);
               return {
-                id: user.id,
-                name: user.username,
-                email: user.email,
-                accessToken: user.access_token,
+                id: credentials?.username || "", // Ensure id is always a string
+                name: credentials?.username,
+                email: credentials?.username, // Assuming email is the same as username
+                accessToken: user.token, // Use token from backend response
               };
             }
           } catch (backendError) {
@@ -73,7 +74,7 @@ export const authOptions: NextAuthOptions = {
 
           if (mockUser) {
             return {
-              id: mockUser.id,
+              id: mockUser.id || "", // Ensure id is always a string
               name: mockUser.username,
               email: mockUser.email,
               accessToken: mockUser.access_token,
@@ -113,4 +114,4 @@ export const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST }; 
+export { handler as GET, handler as POST };

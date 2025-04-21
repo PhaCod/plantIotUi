@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,11 +20,53 @@ import AlertSystem from "@/components/alert-system"
 import ActivityLog from "@/components/activity-log" // Import ActivityLog component
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { signOut } from "next-auth/react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { iotApi } from "@/app/api/iotApi/route";
 
 export default function Dashboard() {
-  const [activeAlerts, setActiveAlerts] = useState(3)
+  const [activeAlerts, setActiveAlerts] = useState(3);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+
+  const [temperatureThreshold, setTemperatureThreshold] = useState({ lower: 0, upper: 0 });
+  const [humidityThreshold, setHumidityThreshold] = useState({ lower: 0, upper: 0 });
+  const [soilMoistureThreshold, setSoilMoistureThreshold] = useState({ lower: 0, upper: 0 });
+  const [lightThreshold, setLightThreshold] = useState({ lower: 0, upper: 0 });
+
+  const [isTemperatureChanged, setIsTemperatureChanged] = useState(false);
+  const [isHumidityChanged, setIsHumidityChanged] = useState(false);
+  const [isSoilMoistureChanged, setIsSoilMoistureChanged] = useState(false);
+  const [isLightChanged, setIsLightChanged] = useState(false);
+
+  useEffect(() => {
+    async function fetchThresholds() {
+      try {
+        const temp = await iotApi.getThreshold("temp");
+        setTemperatureThreshold(temp);
+
+        const humidity = await iotApi.getThreshold("humidity");
+        setHumidityThreshold(humidity);
+
+        const soilMoisture = await iotApi.getThreshold("moisture");
+        setSoilMoistureThreshold(soilMoisture);
+
+        const light = await iotApi.getThreshold("light");
+        setLightThreshold(light);
+      } catch (error) {
+        console.error("Failed to fetch thresholds:", error);
+      }
+    }
+
+    fetchThresholds();
+  }, []);
 
   const handleSubscribe = async () => {
     if (!email) {
@@ -33,7 +75,7 @@ export default function Dashboard() {
     }
 
     try {
-      const response = await fetch("/api/subscribe", {
+      const response = await fetch("http://127.0.0.1:5000/subcription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +148,7 @@ export default function Dashboard() {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Log out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut()}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -117,7 +159,7 @@ export default function Dashboard() {
       </div>
 
       <Tabs defaultValue="dashboard" className="mb-6">
-        <TabsList className="grid grid-cols-4 mb-4">
+        <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 size={16} />
             Dashboard
@@ -134,6 +176,10 @@ export default function Dashboard() {
             <Bell size={16} />
             Alerts
             {activeAlerts > 0 && <Badge className="ml-1 bg-red-500">{activeAlerts}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings size={16} />
+            Thresholds
           </TabsTrigger>
         </TabsList>
 
@@ -153,6 +199,146 @@ export default function Dashboard() {
 
         <TabsContent value="alerts">
           <AlertSystem onAlertCountChange={setActiveAlerts} />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Temperature Thresholds</CardTitle>
+                <CardDescription>Set min and max temperature values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={temperatureThreshold.lower}
+                    onChange={(e) => {
+                      setTemperatureThreshold({ ...temperatureThreshold, lower: Number(e.target.value) });
+                      setIsTemperatureChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={temperatureThreshold.upper}
+                    onChange={(e) => {
+                      setTemperatureThreshold({ ...temperatureThreshold, upper: Number(e.target.value) });
+                      setIsTemperatureChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isTemperatureChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Humidity Thresholds</CardTitle>
+                <CardDescription>Set min and max humidity values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={humidityThreshold.lower}
+                    onChange={(e) => {
+                      setHumidityThreshold({ ...humidityThreshold, lower: Number(e.target.value) });
+                      setIsHumidityChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={humidityThreshold.upper}
+                    onChange={(e) => {
+                      setHumidityThreshold({ ...humidityThreshold, upper: Number(e.target.value) });
+                      setIsHumidityChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isHumidityChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Soil Moisture Thresholds</CardTitle>
+                <CardDescription>Set min and max soil moisture values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={soilMoistureThreshold.lower}
+                    onChange={(e) => {
+                      setSoilMoistureThreshold({ ...soilMoistureThreshold, lower: Number(e.target.value) });
+                      setIsSoilMoistureChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={soilMoistureThreshold.upper}
+                    onChange={(e) => {
+                      setSoilMoistureThreshold({ ...soilMoistureThreshold, upper: Number(e.target.value) });
+                      setIsSoilMoistureChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isSoilMoistureChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Light Thresholds</CardTitle>
+                <CardDescription>Set min and max light values</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    className="w-full"
+                    value={lightThreshold.lower}
+                    onChange={(e) => {
+                      setLightThreshold({ ...lightThreshold, lower: Number(e.target.value) });
+                      setIsLightChanged(true);
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    className="w-full"
+                    value={lightThreshold.upper}
+                    onChange={(e) => {
+                      setLightThreshold({ ...lightThreshold, upper: Number(e.target.value) });
+                      setIsLightChanged(true);
+                    }}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="default" disabled={!isLightChanged}>Save</Button>
+              </CardFooter>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
