@@ -38,11 +38,11 @@ export class IoTApi {
 
   public async postFeedData(feed: FeedType, value: string): Promise<string> {
     try {
-      const response = await fetch(`${API_BASE_URL}/${feed}`, {
+      const response = await fetch(`${API_BASE_URL}/devices/${feed}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-AIO-Key": `${PUBLIC_API_KEY}`,
+
         },
         body: JSON.stringify({ value }),
       });

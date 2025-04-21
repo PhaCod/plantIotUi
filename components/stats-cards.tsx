@@ -11,6 +11,10 @@ interface SensorData {
   humidity: number | null
   soilMoisture: number | null
   lightIntensity: number | null
+  temperatureThreshold?: { lower: number; upper: number }
+  humidityThreshold?: { lower: number; upper: number }
+  soilMoistureThreshold?: { lower: number; upper: number }
+  lightIntensityThreshold?: { lower: number; upper: number }
 }
 
 const initialSensorData: SensorData = {
@@ -31,38 +35,63 @@ export default function StatsCards() {
       setIsConnected(false);
     };
 
-    const setupConnection = () => {
+    const setupConnection = async () => {
       resetConnection();
-      iotApi.getFeedLastData("temp").then((data) => {
-        setSensorData((prev) => ({ ...prev, temperature: parseFloat(data.value) }));
-      });
-      iotApi.getFeedLastData("humidity").then((data) => {
-        setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }));
-      });
-      iotApi.getFeedLastData("moisture").then((data) => {
-        setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }));
-      });
-      iotApi.getFeedLastData("light").then((data) => {
-        setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }));
-      });
 
-      iotApi.subscribeToStream((data) => {
-        setIsConnected(true);
-        setSensorData((prev) => {
-          switch (data.topic) {
-            case "temp":
-              return { ...prev, temperature: parseFloat(data.value) };
-            case "humidity":
-              return { ...prev, humidity: parseFloat(data.value) };
-            case "moisture":
-              return { ...prev, soilMoisture: parseFloat(data.value) };
-            case "light":
-              return { ...prev, lightIntensity: parseFloat(data.value) };
-            default:
-              return prev;
-          }
+      try {
+        const tempThreshold = await iotApi.getThreshold("temp");
+        const humidityThreshold = await iotApi.getThreshold("humidity");
+        const moistureThreshold = await iotApi.getThreshold("moisture");
+        const lightThreshold = await iotApi.getThreshold("light");
+
+        console.log("Thresholds:", {
+          temp: tempThreshold,
+          humidity: humidityThreshold,
+          moisture: moistureThreshold,
+          light: lightThreshold,
         });
-      });
+
+        setSensorData((prev) => ({
+          ...prev,
+          temperatureThreshold: tempThreshold,
+          humidityThreshold: humidityThreshold,
+          soilMoistureThreshold: moistureThreshold,
+          lightIntensityThreshold: lightThreshold,
+        }));
+
+        iotApi.getFeedLastData("temp").then((data) => {
+          setSensorData((prev) => ({ ...prev, temperature: parseFloat(data.value) }));
+        });
+        iotApi.getFeedLastData("humidity").then((data) => {
+          setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }));
+        });
+        iotApi.getFeedLastData("moisture").then((data) => {
+          setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }));
+        });
+        iotApi.getFeedLastData("light").then((data) => {
+          setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }));
+        });
+
+        iotApi.subscribeToStream((data) => {
+          setIsConnected(true);
+          setSensorData((prev) => {
+            switch (data.topic) {
+              case "temp":
+                return { ...prev, temperature: parseFloat(data.value) };
+              case "humidity":
+                return { ...prev, humidity: parseFloat(data.value) };
+              case "moisture":
+                return { ...prev, soilMoisture: parseFloat(data.value) };
+              case "light":
+                return { ...prev, lightIntensity: parseFloat(data.value) };
+              default:
+                return prev;
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Error setting up connection:", error);
+      }
     };
 
     setupConnection();
@@ -125,7 +154,9 @@ export default function StatsCards() {
                 <p>{`$$T_{air} = ${sensorData.temperature?.toFixed(1) ?? "--"}°C$$`}</p>
               </TooltipContent>
             </Tooltip>
-            <p className="text-xs text-muted-foreground">Optimal range: 18-32°C</p>
+            <p className="text-xs text-muted-foreground">
+              Optimal range: {sensorData.temperatureThreshold?.lower ?? "--"}-{sensorData.temperatureThreshold?.upper ?? "--"}°C
+            </p>
           </CardContent>
         </Card>
 
@@ -145,7 +176,9 @@ export default function StatsCards() {
                 <p>{`$$H_{air} = ${sensorData.humidity?.toFixed(0) ?? "--"}\\%$$`}</p>
               </TooltipContent>
             </Tooltip>
-            <p className="text-xs text-muted-foreground">Optimal range: 40-80%</p>
+            <p className="text-xs text-muted-foreground">
+              Optimal range: {sensorData.humidityThreshold?.lower ?? "--"}-{sensorData.humidityThreshold?.upper ?? "--"}%
+            </p>
           </CardContent>
         </Card>
 
@@ -165,7 +198,9 @@ export default function StatsCards() {
                 <p>{`$$H_{soil} = ${sensorData.soilMoisture?.toFixed(0) ?? "--"}\\%$$`}</p>
               </TooltipContent>
             </Tooltip>
-            <p className="text-xs text-muted-foreground">Optimal range: 30-70%</p>
+            <p className="text-xs text-muted-foreground">
+              Optimal range: {sensorData.soilMoistureThreshold?.lower ?? "--"}-{sensorData.soilMoistureThreshold?.upper ?? "--"}%
+            </p>
           </CardContent>
         </Card>
 
@@ -185,7 +220,9 @@ export default function StatsCards() {
                 <p>{`$$Lux = ${sensorData.lightIntensity?.toFixed(0) ?? "--"}$$`}</p>
               </TooltipContent>
             </Tooltip>
-            <p className="text-xs text-muted-foreground">Optimal range: 500-2000 lux</p>
+            <p className="text-xs text-muted-foreground">
+              Optimal range: {sensorData.lightIntensityThreshold?.lower ?? "--"}-{sensorData.lightIntensityThreshold?.upper ?? "--"} lux
+            </p>
           </CardContent>
         </Card>
       </>

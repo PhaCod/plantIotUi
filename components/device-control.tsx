@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 import { toast } from "@/components/ui/use-toast";
-import { iotApi, FeedType } from "@/lib/api";
+import { iotApi } from "@/app/api/iotApi/route";
 
 export default function DeviceControl() {
   const [waterPump, setWaterPump] = useState(false);

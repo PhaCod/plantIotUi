@@ -39,11 +39,13 @@ export class IoTApi {
 
   public async postFeedData(feed: FeedType, value: string): Promise<string> {
     try {
-      const response = await fetch(`${API_BASE_URL}/${feed}`, {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+      const response = await fetch(`${API_BASE_URL}/devices/${feed}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-AIO-Key": `${PUBLIC_API_KEY}`,
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
         },
         body: JSON.stringify({ value }),
       });
@@ -83,8 +85,6 @@ export class IoTApi {
     try {
       const session = await getSession(); // Retrieve session from next-auth
       const token = session?.accessToken; // Extract access token
-      console.log("Access Token:", token);
-      console.log("Session:", session);
 
       if (!token) {
         throw new Error("Access token is missing");
@@ -97,12 +97,19 @@ export class IoTApi {
           "Authorization": `Bearer ${token}` // Add token to Authorization header
         },
       });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      return data;
+
+      // Extract and return the threshold for the specific feed type
+      if (data[feed]) {
+        return data[feed];
+      } else {
+        throw new Error(`Threshold data for feed type '${feed}' not found`);
+      }
     } catch (error) {
       console.error(`Failed to get threshold for ${feed}:`, error);
       throw error;
