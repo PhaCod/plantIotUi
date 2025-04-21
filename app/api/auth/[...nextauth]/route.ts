@@ -29,6 +29,7 @@ const MOCK_USERS = [
   }
 ];
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5000";
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -41,7 +42,7 @@ export const authOptions: NextAuthOptions = {
         try {
           // First try to authenticate with backend
           try {
-            const response = await fetch("http://127.0.0.1:5000/users/login", {
+            const response = await fetch(`${API_BASE_URL}/users/login`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -68,8 +69,8 @@ export const authOptions: NextAuthOptions = {
 
           // If backend fails or returns error, use mock data
           const mockUser = MOCK_USERS.find(
-            user => user.username === credentials?.username && 
-                   user.password === credentials?.password
+            user => user.username === credentials?.username &&
+              user.password === credentials?.password
           );
 
           if (mockUser) {

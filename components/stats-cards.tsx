@@ -126,29 +126,36 @@ const StatsCards = forwardRef((props, ref) => {
   // Determine status colors based on thresholds
   const getTemperatureStatus = (value: number | null) => {
     if (value === null) return "text-gray-400"
-    if (value > 32) return "text-red-500"
-    if (value < 18) return "text-blue-500"
+    if (sensorData.temperatureThreshold) {
+      if (value > sensorData.temperatureThreshold.upper) return "text-red-500"
+      if (value < sensorData.temperatureThreshold.lower) return "text-blue-500"
+    }
     return "text-green-500"
   }
-
   const getHumidityStatus = (value: number | null) => {
     if (value === null) return "text-gray-400"
-    if (value > 80) return "text-red-500"
-    if (value < 40) return "text-yellow-500"
+    if (sensorData.humidityThreshold) {
+      if (value > sensorData.humidityThreshold.upper) return "text-red-500"
+      if (value < sensorData.humidityThreshold.lower) return "text-yellow-500"
+    }
     return "text-green-500"
   }
 
   const getSoilMoistureStatus = (value: number | null) => {
     if (value === null) return "text-gray-400"
-    if (value < 30) return "text-red-500"
-    if (value > 70) return "text-blue-500"
+    if (sensorData.soilMoistureThreshold) {
+      if (value < sensorData.soilMoistureThreshold.lower) return "text-red-500"
+      if (value > sensorData.soilMoistureThreshold.upper) return "text-blue-500"
+    }
     return "text-green-500"
   }
 
   const getLightStatus = (value: number | null) => {
     if (value === null) return "text-gray-400"
-    if (value > 2000) return "text-yellow-500"
-    if (value < 500) return "text-blue-500"
+    if (sensorData.lightIntensityThreshold) {
+      if (value > sensorData.lightIntensityThreshold.upper) return "text-yellow-500"
+      if (value < sensorData.lightIntensityThreshold.lower) return "text-blue-500"
+    }
     return "text-green-500"
   }
 

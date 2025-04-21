@@ -23,7 +23,9 @@ const initialState: IoTDataState = {
   light: '',
 };
 
-const socket = io('http://127.0.0.1:5000'); 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5000';
+
+const socket = io(`${API_BASE_URL}`);
 
 export function useIoTData(): UseIoTDataReturn {
   const [data, setData] = useState<IoTDataState>(initialState);
