@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,59 +10,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Fan, Zap, Lightbulb, Search, Check, X, UserCog } from "lucide-react"
 import UserPermissionCard from "@/components/admin/user-permission-card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { iotApi } from "@/app/api/iotApi/route"
 
-// Mock user data
-const mockUsers = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@example.com",
-    role: "Greenhouse Manager",
-    permissions: { fan: true, pump: true, lights: true },
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    role: "Gardener",
-    permissions: { fan: true, pump: false, lights: true },
-  },
-  {
-    id: 3,
-    name: "Robert Johnson",
-    email: "robert.j@example.com",
-    role: "Assistant",
-    permissions: { fan: false, pump: false, lights: false },
-  },
-  {
-    id: 4,
-    name: "Emily Davis",
-    email: "emily.d@example.com",
-    role: "Intern",
-    permissions: { fan: false, pump: false, lights: false },
-  },
-  {
-    id: 5,
-    name: "Michael Wilson",
-    email: "michael.w@example.com",
-    role: "Technician",
-    permissions: { fan: true, pump: true, lights: false },
-  },
-  {
-    id: 6,
-    name: "Sarah Brown",
-    email: "sarah.b@example.com",
-    role: "Researcher",
-    permissions: { fan: false, pump: true, lights: true },
-  },
-  {
-    id: 7,
-    name: "David Miller",
-    email: "david.m@example.com",
-    role: "Visitor",
-    permissions: { fan: false, pump: false, lights: false },
-  },
-]
+interface User {
+  _id: string;
+  email: string;
+  role: string;
+  permissions: string[];
+  channels?: string[]; // Made channels optional
+}
 
 interface Permissions {
   fan: boolean;
@@ -71,25 +27,55 @@ interface Permissions {
 }
 
 export default function PermissionsManager() {
-  const [users, setUsers] = useState(mockUsers)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedUser, setSelectedUser] = useState<(typeof users)[0] | null>(null)
+  const [users, setUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editedPermissions, setEditedPermissions] = useState<Permissions | null>(null);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        setLoading(true);
+        const fetchedUsers = await iotApi.getAllUsers();
+        setUsers(fetchedUsers);
+      } catch (err) {
+        console.error("Failed to fetch users:", err);
+        setError("Failed to load users.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUsers();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   // Filter users based on search query
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      user.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Handle selecting a user to edit
-  const handleSelectUser = (user: (typeof users)[0]) => {
-    setSelectedUser(user)
-    setEditedPermissions(user.permissions)
-  }
+  const handleSelectUser = (user: User) => {
+    setSelectedUser(user);
+    setEditedPermissions({
+      fan: user.permissions.includes("fan"),
+      pump: user.permissions.includes("pump"),
+      lights: user.permissions.includes("led"),
+    });
+  };
 
   // Handle permission toggle
   const handlePermissionChange = (device: keyof Permissions, value: boolean) => {
@@ -102,22 +88,61 @@ export default function PermissionsManager() {
   };
 
   // Save permissions
-  const handleSavePermissions = () => {
+  const handleSavePermissions = async () => {
     if (selectedUser && editedPermissions) {
-      const updatedUsers = users.map((user) =>
-        user.id === selectedUser.id ? { ...user, permissions: editedPermissions } : user,
-      )
-      setUsers(updatedUsers)
-      setSelectedUser(null)
-      setEditedPermissions(null)
+      const updatedPermissions = Object.keys(editedPermissions).filter(
+        (key) => editedPermissions[key as keyof Permissions]
+      );
+
+      try {
+        await iotApi.addPermission(selectedUser.email, updatedPermissions);
+
+        const updatedUsers = users.map((user) =>
+          user._id === selectedUser._id
+            ? {
+              ...user,
+              permissions: updatedPermissions,
+            }
+            : user
+        );
+
+        setUsers(updatedUsers);
+        setSelectedUser(null);
+        setEditedPermissions(null);
+
+        console.log("Permissions updated successfully");
+
+        // Refresh the page after saving permissions
+        window.location.reload();
+      } catch (error) {
+        console.error("Failed to update permissions:", error);
+      }
     }
-  }
+  };
 
   // Cancel editing
   const handleCancelEdit = () => {
-    setSelectedUser(null)
-    setEditedPermissions(null)
-  }
+    setSelectedUser(null);
+    setEditedPermissions(null);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const response = await iotApi.deleteUser(userId);
+
+      if ('error' in response) {
+        console.error(response.error);
+        return;
+      }
+
+      setUsers(users.filter((user) => user._id !== userId));
+      console.log("User deleted successfully");
+      // Refresh the page after saving permissions
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -144,10 +169,10 @@ export default function PermissionsManager() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <UserCog className="mr-2 h-5 w-5" />
-              Edit Permissions for {selectedUser.name}
+              Edit Permissions for {selectedUser.email}
             </CardTitle>
             <CardDescription>
-              {selectedUser.email} • {selectedUser.role}
+              {selectedUser.role}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -206,6 +231,17 @@ export default function PermissionsManager() {
                 </div>
               </div>
 
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Subscribed Channels</h3>
+                <div className="grid gap-2">
+                  {selectedUser.channels?.map((channel) => (
+                    <Badge key={channel} variant="outline" className="w-full text-left">
+                      {channel}
+                    </Badge>
+                  )) || <p className="text-sm text-muted-foreground">No channels subscribed.</p>}
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={handleCancelEdit}>
                   <X className="mr-2 h-4 w-4" />
@@ -227,8 +263,18 @@ export default function PermissionsManager() {
             </div>
           ) : viewMode === "cards" ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredUsers.map((user) => (
-                <UserPermissionCard key={user.id} user={user} onEdit={() => handleSelectUser(user)} />
+              {filteredUsers.map((user: { _id: string; email: string; role: string; permissions: string[] }) => (
+                <UserPermissionCard
+                  key={`${user._id}-${user.email}`} // Ensure a unique key by combining _id and email
+                  user={{
+                    _id: user._id,
+                    email: user.email,
+                    role: user.role,
+                    permissions: user.permissions,
+                    channels: user.channels || [],
+                  }}
+                  onEdit={() => handleSelectUser(user)}
+                />
               ))}
             </div>
           ) : (
@@ -250,19 +296,18 @@ export default function PermissionsManager() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
+                    {filteredUsers.map((user, index) => (
+                      <TableRow key={`${user._id}-${index}`}>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                            <p className="font-medium">{user.email}</p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{user.role}</Badge>
+                        <Badge variant={user.role === "admin" ? "default" : "outline"}>{user.role}</Badge>
                         </TableCell>
                         <TableCell>
-                          {user.permissions.fan ? (
+                          {user.permissions.includes("fan") ? (
                             <Badge variant="default" className="w-16 justify-center">
                               Allowed
                             </Badge>
@@ -273,7 +318,7 @@ export default function PermissionsManager() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.permissions.pump ? (
+                          {user.permissions.includes("pump") ? (
                             <Badge variant="default" className="w-16 justify-center">
                               Allowed
                             </Badge>
@@ -284,7 +329,7 @@ export default function PermissionsManager() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.permissions.lights ? (
+                          {user.permissions.includes("led") ? (
                             <Badge variant="default" className="w-16 justify-center">
                               Allowed
                             </Badge>
@@ -295,9 +340,20 @@ export default function PermissionsManager() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleSelectUser(user)}>
-                            Edit
-                          </Button>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user._id)}
+                              disabled={user.role === "admin"} // Disable delete button for admin role
+                            >
+                              Delete
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleSelectUser(user)}>
+                              Edit
+                            </Button>
+
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,26 +1,40 @@
 "use client"
 
+import { useEffect, useState } from "react";
+import { iotApi } from "@/app/api/iotApi/route";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Fan, Zap, Lightbulb, User } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface UserPermissionCardProps {
   user: {
-    id: number
-    name: string
-    email: string
-    role: string
-    permissions: {
-      fan: boolean
-      pump: boolean
-      lights: boolean
-    }
-  }
-  onEdit: () => void
+    _id: string;
+    email: string;
+    role: string;
+    permissions: string[];
+    channels: string[];
+  };
+  onEdit: () => void;
 }
 
 export default function UserPermissionCard({ user, onEdit }: UserPermissionCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await iotApi.deleteUser(user._id);
+      console.log("User deleted successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="bg-muted/50 pb-4">
@@ -30,11 +44,10 @@ export default function UserPermissionCard({ user, onEdit }: UserPermissionCardP
               <User className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-medium">{user.name}</h3>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <h3 className="font-medium">{user.email}</h3>
             </div>
           </div>
-          <Badge variant="outline">{user.role}</Badge>
+          <Badge variant={user.role === "admin" ? "default" : "outline"}>{user.role}</Badge>
         </div>
       </CardHeader>
       <CardContent className="p-4">
@@ -45,7 +58,7 @@ export default function UserPermissionCard({ user, onEdit }: UserPermissionCardP
               <Fan className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">Ventilation Fan</span>
             </div>
-            {user.permissions.fan ? <Badge variant="default">Allowed</Badge> : <Badge variant="outline">Denied</Badge>}
+            {user.permissions.includes("fan") ? <Badge variant="default">Allowed</Badge> : <Badge variant="outline">Denied</Badge>}
           </div>
 
           <div className="flex items-center justify-between">
@@ -53,7 +66,7 @@ export default function UserPermissionCard({ user, onEdit }: UserPermissionCardP
               <Zap className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">Water Pump</span>
             </div>
-            {user.permissions.pump ? <Badge variant="default">Allowed</Badge> : <Badge variant="outline">Denied</Badge>}
+            {user.permissions.includes("pump") ? <Badge variant="default">Allowed</Badge> : <Badge variant="outline">Denied</Badge>}
           </div>
 
           <div className="flex items-center justify-between">
@@ -61,19 +74,43 @@ export default function UserPermissionCard({ user, onEdit }: UserPermissionCardP
               <Lightbulb className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm">LED Lights</span>
             </div>
-            {user.permissions.lights ? (
-              <Badge variant="default">Allowed</Badge>
-            ) : (
-              <Badge variant="outline">Denied</Badge>
-            )}
+            {user.permissions.includes("led") ? <Badge variant="default">Allowed</Badge> : <Badge variant="outline">Denied</Badge>}
           </div>
         </div>
       </CardContent>
       <CardFooter className="border-t bg-muted/20 p-3">
-        <Button variant="outline" size="sm" className="w-full" onClick={onEdit}>
-          Edit Permissions
-        </Button>
+        <div className="flex space-x-2 w-full">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-24"
+                disabled={user.role === "admin"} // Disable delete button for admin role
+              >
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the user.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="outline" size="sm" className="w-full" onClick={onEdit}>
+            Edit Permissions
+          </Button>
+        </div>
       </CardFooter>
     </Card>
-  )
+  );
 }

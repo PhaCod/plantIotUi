@@ -17,6 +17,7 @@ const PUBLIC_API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
 export class IoTApi {
   private static instance: IoTApi;
+  private userPermissionsCache: any = null;
 
   private constructor() {}
 
@@ -81,7 +82,7 @@ export class IoTApi {
     }
   }
 
-  public async getThreshold(feed: FeedType): Promise<{ lower: number; upper: number }> {
+  public async getThreshold(feed: FeedType): Promise<{ value: number; bound: string }> {
     try {
       const session = await getSession(); // Retrieve session from next-auth
       const token = session?.accessToken; // Extract access token
@@ -116,7 +117,7 @@ export class IoTApi {
     }
   }
 
-  public async setThreshold(topic: string, lower: number, upper: number): Promise<string> {
+  public async setThreshold(topic: string, value: number, bound: string): Promise<string> {
     try {
       const session = await getSession(); // Retrieve session from next-auth
       const token = session?.accessToken; // Extract access token
@@ -131,7 +132,7 @@ export class IoTApi {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}` // Add token to Authorization header
         },
-        body: JSON.stringify({ topic, lower, upper }),
+        body: JSON.stringify({ topic, value, bound }),
       });
 
       if (!response.ok) {
@@ -199,6 +200,165 @@ export class IoTApi {
       return data.channels;
     } catch (error) {
       console.error("Failed to get subscribed channels:", error);
+      throw error;
+    }
+  }
+
+  public async getAllUsers(limit: number = 10): Promise<any[]> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Failed to fetch all users:", error);
+      throw error;
+    }
+  }
+
+  public async getLogs(): Promise<{ content: string; timestamp: string }[]> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/logs/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.map((log: any) => ({
+        content: log.content,
+        timestamp: log.timestamp,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch logs:", error);
+      throw error;
+    }
+  }
+
+  public async getUserPermissions(): Promise<any> {
+    try {
+      // Check if permissions are already cached
+      if (this.userPermissionsCache) {
+        return this.userPermissionsCache;
+      }
+
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/me`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Cache the permissions in memory
+      this.userPermissionsCache = data;
+
+      return data;
+    } catch (error) {
+      console.error("Failed to fetch user permissions:", error);
+      throw error;
+    }
+  }
+
+  public async addPermission(email: string, topics: string[]): Promise<string> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/devices/permission`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+        body: JSON.stringify({ email, topics }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error("Failed to add permission:", error);
+      throw error;
+    }
+  }
+
+  public async deleteUser(userId: string): Promise<{ message: string } | { error: string }> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { error: "User not found" };
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
       throw error;
     }
   }

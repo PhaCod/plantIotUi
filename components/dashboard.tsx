@@ -44,7 +44,7 @@ export default function Dashboard() {
 
 
   interface StatsCardsRef {
-    updateSensorData: (topic: string, lower: number, upper: number) => void;
+    updateSensorData: (topic: string, lower: number, upper: string) => void;
   }
 
   const statsCardsRef = useRef<StatsCardsRef | null>(null);
@@ -71,10 +71,10 @@ export default function Dashboard() {
     fetchUserRole();
   }, []);
 
-  const [temperatureThreshold, setTemperatureThreshold] = useState({ lower: 0, upper: 0 });
-  const [humidityThreshold, setHumidityThreshold] = useState({ lower: 0, upper: 0 });
-  const [soilMoistureThreshold, setSoilMoistureThreshold] = useState({ lower: 0, upper: 0 });
-  const [lightThreshold, setLightThreshold] = useState({ lower: 0, upper: 0 });
+  const [temperatureThreshold, setTemperatureThreshold] = useState({ value: 0, bound: "" });
+  const [humidityThreshold, setHumidityThreshold] = useState({ value: 0, bound: "" });
+  const [soilMoistureThreshold, setSoilMoistureThreshold] = useState({ value: 0, bound: ""});
+  const [lightThreshold, setLightThreshold] = useState({ value: 0, bound: "" });
 
   const [isTemperatureChanged, setIsTemperatureChanged] = useState(false);
   const [isHumidityChanged, setIsHumidityChanged] = useState(false);
@@ -145,9 +145,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleSetThreshold = async (topic: string, lower: number, upper: number) => {
+  const handleSetThreshold = async (topic: string, value: number, bound: string) => {
     try {
-      const response = await iotApi.setThreshold(topic, lower, upper);
+      const response = await iotApi.setThreshold(topic, value, bound);
       toast({
         title: "Threshold Updated",
         description: `The ${topic} thresholds have been successfully updated.`,
@@ -155,7 +155,20 @@ export default function Dashboard() {
 
       // Update the thresholds in StatsCards
       if (statsCardsRef.current) {
-        statsCardsRef.current.updateSensorData(topic, lower, upper);
+        const thresholds = {
+          temp: await iotApi.getThreshold("temp"),
+          humidity: await iotApi.getThreshold("humidity"),
+          moisture: await iotApi.getThreshold("moisture"),
+          light: await iotApi.getThreshold("light"),
+        };
+
+        if (thresholds[topic]) {
+          statsCardsRef.current.updateSensorData(
+            topic,
+            thresholds[topic].lower,
+            thresholds[topic].upper
+          );
+        }
       }
 
       // Reset the change state for all topics
@@ -168,6 +181,8 @@ export default function Dashboard() {
       } else if (topic === "light") {
         setIsLightChanged(false);
       }
+
+
     } catch (error) {
       console.error("Failed to set threshold:", error);
       toast({
@@ -177,6 +192,8 @@ export default function Dashboard() {
       });
     }
   };
+
+  const [temperatureBound, setTemperatureBound] = useState("lower"); // Add state for bound
 
   return (
     <div className="container mx-auto p-4">
@@ -295,26 +312,21 @@ export default function Dashboard() {
       </div>
 
       <Tabs defaultValue="dashboard" className="mb-6">
-        <TabsList className={`grid ${userRole === 'admin' ? 'grid-cols-5' : 'grid-cols-3'} mb-4`}>
+        <TabsList className={`grid ${userRole === 'admin' ? 'grid-cols-4' : 'grid-cols-2'} mb-4`}>
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 size={16} />
             Dashboard
           </TabsTrigger>
+          <TabsTrigger value="devices" className="flex items-center gap-2">
+            <Gauge size={16} />
+            Device Control
+          </TabsTrigger>
           {userRole === 'admin' && (
-            <TabsTrigger value="devices" className="flex items-center gap-2">
-              <Gauge size={16} />
-              Device Control
+            <TabsTrigger value="activity" className="flex items-center gap-2">
+              <Activity size={16} />
+              Activity
             </TabsTrigger>
           )}
-          <TabsTrigger value="activity" className="flex items-center gap-2">
-            <Activity size={16} />
-            Activity
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="flex items-center gap-2">
-            <Bell size={16} />
-            Alerts
-            {activeAlerts > 0 && <Badge className="ml-1 bg-red-500">{activeAlerts}</Badge>}
-          </TabsTrigger>
           {userRole === 'admin' && (
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings size={16} />
@@ -327,11 +339,9 @@ export default function Dashboard() {
           <EnvironmentCharts />
         </TabsContent>
 
-        {userRole === 'admin' && (
-          <TabsContent value="devices">
-            <DeviceControl />
-          </TabsContent>
-        )}
+        <TabsContent value="devices">
+          <DeviceControl />
+        </TabsContent>
 
         <TabsContent value="activity">
           <div className="grid grid-cols-1 gap-6">
@@ -355,31 +365,33 @@ export default function Dashboard() {
                   <div className="flex gap-4">
                     <Input
                       type="number"
-                      placeholder="Min"
+                      placeholder="Value"
                       className="w-full"
-                      value={temperatureThreshold.lower}
+                      value={temperatureThreshold.value || ""} // Ensure value is always defined
                       onChange={(e) => {
-                        setTemperatureThreshold({ ...temperatureThreshold, lower: Number(e.target.value) });
+                        setTemperatureThreshold({ ...temperatureThreshold, value: Number(e.target.value) });
                         setIsTemperatureChanged(true);
                       }}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      className="w-full"
-                      value={temperatureThreshold.upper}
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={temperatureBound} // Bind to state
                       onChange={(e) => {
-                        setTemperatureThreshold({ ...temperatureThreshold, upper: Number(e.target.value) });
+                        const selectedBound = e.target.value;
+                        setTemperatureBound(selectedBound); // Update bound state
                         setIsTemperatureChanged(true);
                       }}
-                    />
+                    >
+                      <option value="lower">Lower</option>
+                      <option value="upper">Upper</option>
+                    </select>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
                     variant="default"
                     disabled={!isTemperatureChanged}
-                    onClick={() => handleSetThreshold("temp", temperatureThreshold.lower, temperatureThreshold.upper)}
+                    onClick={() => handleSetThreshold("temp", temperatureThreshold.value, temperatureBound)} // Use bound state
                   >
                     Save
                   </Button>
@@ -395,31 +407,33 @@ export default function Dashboard() {
                   <div className="flex gap-4">
                     <Input
                       type="number"
-                      placeholder="Min"
+                      placeholder="Value"
                       className="w-full"
-                      value={humidityThreshold.lower}
+                      value={humidityThreshold.value || ""} // Ensure value is always defined
                       onChange={(e) => {
-                        setHumidityThreshold({ ...humidityThreshold, lower: Number(e.target.value) });
+                        setHumidityThreshold({ ...humidityThreshold, value: Number(e.target.value) });
                         setIsHumidityChanged(true);
                       }}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      className="w-full"
-                      value={humidityThreshold.upper}
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={humidityThreshold.bound} // Bind to state
                       onChange={(e) => {
-                        setHumidityThreshold({ ...humidityThreshold, upper: Number(e.target.value) });
+                        const selectedBound = e.target.value;
+                        setHumidityThreshold({ ...humidityThreshold, bound: selectedBound }); // Update bound state
                         setIsHumidityChanged(true);
                       }}
-                    />
+                    >
+                      <option value="lower">Lower</option>
+                      <option value="upper">Upper</option>
+                    </select>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
                     variant="default"
                     disabled={!isHumidityChanged}
-                    onClick={() => handleSetThreshold("humidity", humidityThreshold.lower, humidityThreshold.upper)}
+                    onClick={() => handleSetThreshold("humidity", humidityThreshold.value, humidityThreshold.bound)}
                   >
                     Save
                   </Button>
@@ -435,31 +449,33 @@ export default function Dashboard() {
                   <div className="flex gap-4">
                     <Input
                       type="number"
-                      placeholder="Min"
+                      placeholder="Value"
                       className="w-full"
-                      value={soilMoistureThreshold.lower}
+                      value={soilMoistureThreshold.value || ""} // Ensure value is always defined
                       onChange={(e) => {
-                        setSoilMoistureThreshold({ ...soilMoistureThreshold, lower: Number(e.target.value) });
+                        setSoilMoistureThreshold({ ...soilMoistureThreshold, value: Number(e.target.value) });
                         setIsSoilMoistureChanged(true);
                       }}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      className="w-full"
-                      value={soilMoistureThreshold.upper}
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={soilMoistureThreshold.bound} // Bind to state
                       onChange={(e) => {
-                        setSoilMoistureThreshold({ ...soilMoistureThreshold, upper: Number(e.target.value) });
+                        const selectedBound = e.target.value;
+                        setSoilMoistureThreshold({ ...soilMoistureThreshold, bound: selectedBound }); // Update bound state
                         setIsSoilMoistureChanged(true);
                       }}
-                    />
+                    >
+                      <option value="lower">Lower</option>
+                      <option value="upper">Upper</option>
+                    </select>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
                     variant="default"
                     disabled={!isSoilMoistureChanged}
-                    onClick={() => handleSetThreshold("moisture", soilMoistureThreshold.lower, soilMoistureThreshold.upper)}
+                    onClick={() => handleSetThreshold("moisture", soilMoistureThreshold.value, soilMoistureThreshold.bound)}
                   >
                     Save
                   </Button>
@@ -475,31 +491,33 @@ export default function Dashboard() {
                   <div className="flex gap-4">
                     <Input
                       type="number"
-                      placeholder="Min"
+                      placeholder="Value"
                       className="w-full"
-                      value={lightThreshold.lower}
+                      value={lightThreshold.value || ""} // Ensure value is always defined
                       onChange={(e) => {
-                        setLightThreshold({ ...lightThreshold, lower: Number(e.target.value) });
+                        setLightThreshold({ ...lightThreshold, value: Number(e.target.value) });
                         setIsLightChanged(true);
                       }}
                     />
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      className="w-full"
-                      value={lightThreshold.upper}
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={lightThreshold.bound} // Bind to state
                       onChange={(e) => {
-                        setLightThreshold({ ...lightThreshold, upper: Number(e.target.value) });
+                        const selectedBound = e.target.value;
+                        setLightThreshold({ ...lightThreshold, bound: selectedBound }); // Update bound state
                         setIsLightChanged(true);
                       }}
-                    />
+                    >
+                      <option value="lower">Lower</option>
+                      <option value="upper">Upper</option>
+                    </select>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
                     variant="default"
                     disabled={!isLightChanged}
-                    onClick={() => handleSetThreshold("light", lightThreshold.lower, lightThreshold.upper)}
+                    onClick={() => handleSetThreshold("light", lightThreshold.value, lightThreshold.bound)}
                   >
                     Save
                   </Button>
