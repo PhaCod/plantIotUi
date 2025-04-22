@@ -21,7 +21,7 @@ interface ChartDataPoint {
 }
 
 // Adafruit IO API configuration
-const ADAFRUIT_API_KEY = process.env.NEXT_PUBLIC_API_KEY
+const ADAFRUIT_API_KEY = process.env.API_KEY
 const ADAFRUIT_USERNAME = process.env.NEXT_PUBLIC_API_USERNAME
 
 // Feed configuration - allows for easy modification if feed names change
