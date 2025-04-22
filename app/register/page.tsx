@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -21,9 +20,10 @@ export default function RegisterPage() {
         const formData = new FormData(e.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
         try {
-            const response = await fetch("/api/auth/register", {
+            const response = await fetch(`${API_BASE_URL}/users/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
