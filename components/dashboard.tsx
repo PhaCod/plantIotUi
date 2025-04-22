@@ -62,7 +62,7 @@ export default function Dashboard() {
       const token = session?.accessToken; // Extract access token
       if (token) {
         const decoded = jwtDecode<CustomJwtPayload>(token);
-        setUserRole(decoded.role || ""); // Assuming the role is stored in the 'role' claim
+        setUserRole(decoded.role || ""); 
       }
     }
 
@@ -211,7 +211,7 @@ export default function Dashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{email || "No email available"}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem onClick={() => signOut()}>Log out</DropdownMenuItem>

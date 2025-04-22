@@ -47,10 +47,7 @@ export default function RegisterPage() {
 
     return (
         <div className="container flex h-screen w-screen flex-col items-center justify-center">
-            <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8">
-                <Image src="/logo.svg" alt="Logo" width={32} height={32} />
-                <span className="sr-only">Home</span>
-            </Link>
+
             <Card className="w-[350px]">
                 <CardHeader>
                     <CardTitle>Register</CardTitle>
