@@ -145,6 +145,64 @@ export class IoTApi {
     }
   }
 
+  public async subscribeToChannels(channels: string[]): Promise<string> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/subscription`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+        body: JSON.stringify({ channels }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error("Failed to subscribe to channels:", error);
+      throw error;
+    }
+  }
+
+  public async getSubscribedChannels(): Promise<string[]> {
+    try {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken; // Extract access token
+
+      if (!token) {
+        throw new Error("Access token is missing");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/subscription`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.channels;
+    } catch (error) {
+      console.error("Failed to get subscribed channels:", error);
+      throw error;
+    }
+  }
+
   public subscribeToStream(
     onData: (data: FeedData) => void,
     onError?: (error: Event) => void

@@ -37,15 +37,16 @@ import { toast } from "@/components/ui/use-toast";
 
 interface CustomJwtPayload extends JwtPayload {
   role?: string;
+  email?: string; // Add email property
 }
 
 export default function Dashboard() {
-  
-  
+
+
   interface StatsCardsRef {
     updateSensorData: (topic: string, lower: number, upper: number) => void;
   }
-  
+
   const statsCardsRef = useRef<StatsCardsRef | null>(null);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5000";
@@ -62,7 +63,8 @@ export default function Dashboard() {
       const token = session?.accessToken; // Extract access token
       if (token) {
         const decoded = jwtDecode<CustomJwtPayload>(token);
-        setUserRole(decoded.role || ""); 
+        setUserRole(decoded.role || "");
+        setEmail(decoded.email || ""); // Set email from decoded token
       }
     }
 
@@ -101,19 +103,32 @@ export default function Dashboard() {
     fetchThresholds();
   }, []);
 
+  const [subscriptions, setSubscriptions] = useState({
+    temp: false,
+    humidity: false,
+    soilMoisture: false,
+    light: false,
+  });
+
   const handleSubscribe = async () => {
-    if (!email) {
-      setError("Email is required.");
-      return;
-    }
+
+    const selectedChannels = Object.keys(subscriptions).filter(
+      (key) => subscriptions[key as keyof typeof subscriptions]
+    );
+
+    // If no channels are selected, send an empty array
+    const channelsToSend = selectedChannels.length > 0 ? selectedChannels : [];
 
     try {
-      const response = await fetch(`${API_BASE_URL}/subcription`, {
+      const session = await getSession(); // Retrieve session from next-auth
+      const token = session?.accessToken;
+      const response = await fetch(`${API_BASE_URL}/subscription`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add token to Authorization header,
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ channels: channelsToSend }),
       });
 
       if (!response.ok) {
@@ -121,7 +136,10 @@ export default function Dashboard() {
       }
 
       setError("");
-      alert("Subscription successful!");
+      toast({
+        title: "Subscription Successful",
+        description: "You have successfully subscribed to the selected alerts.",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     }
@@ -168,10 +186,17 @@ export default function Dashboard() {
           <p className="text-gray-600">Real-time environmental monitoring and control</p>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings size={16} />
-            Settings
-          </Button>
+          {userRole === 'admin' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => window.location.href = '/permissions'}
+            >
+              <Settings size={16} />
+              Permissions Manager
+            </Button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 relative">
@@ -181,20 +206,66 @@ export default function Dashboard() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Subscribe to Alerts</AlertDialogTitle>
+                <AlertDialogTitle>Subscribe</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Enter your email address to receive notifications from the system.
+                  Select the types of alerts you want to subscribe to.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <div className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="w-full"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="temp-alert" className="flex-1">Temperature Alerts</label>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="checkbox"
+                      id="temp-alert"
+                      checked={subscriptions.temp}
+                      onChange={(e) => setSubscriptions({ ...subscriptions, temp: e.target.checked })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="humidity-alert" className="flex-1">Humidity Alerts</label>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="checkbox"
+                      id="humidity-alert"
+                      checked={subscriptions.humidity}
+                      onChange={(e) => setSubscriptions({ ...subscriptions, humidity: e.target.checked })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="soil-moisture-alert" className="flex-1">Soil Moisture Alerts</label>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="checkbox"
+                      id="soil-moisture-alert"
+                      checked={subscriptions.soilMoisture}
+                      onChange={(e) => setSubscriptions({ ...subscriptions, soilMoisture: e.target.checked })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="light-alert">Light Alerts</label>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="checkbox"
+                      id="light-alert"
+                      checked={subscriptions.light}
+                      onChange={(e) => setSubscriptions({ ...subscriptions, light: e.target.checked })}
+                    />
+                    <div className="flex-1"></div>
+                  </div>
+                  {error && <p className="text-red-500 text-sm">{error}</p>}
+                </div>
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -211,9 +282,8 @@ export default function Dashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{email || "No email available"}</DropdownMenuLabel>
+              <DropdownMenuLabel>{email || "No email available"}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem onClick={() => signOut()}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
