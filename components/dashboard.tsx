@@ -72,7 +72,7 @@ export default function Dashboard() {
 
   const [temperatureThreshold, setTemperatureThreshold] = useState({ value: 0, bound: "" });
   const [humidityThreshold, setHumidityThreshold] = useState({ value: 0, bound: "" });
-  const [moistureThreshold, setmoistureThreshold] = useState({ value: 0, bound: ""});
+  const [moistureThreshold, setmoistureThreshold] = useState({ value: 0, bound: "" });
   const [lightThreshold, setLightThreshold] = useState({ value: 0, bound: "" });
 
   const [isTemperatureChanged, setIsTemperatureChanged] = useState(false);
@@ -274,7 +274,7 @@ export default function Dashboard() {
                     <Input
                       type="checkbox"
                       id="temp-alert"
-                      checked={subscriptions.temp}
+                      checked={subscriptions.temp || false} // Ensure default value is false
                       onChange={(e) => setSubscriptions({ ...subscriptions, temp: e.target.checked })}
                     />
                   </div>
@@ -287,7 +287,7 @@ export default function Dashboard() {
                     <Input
                       type="checkbox"
                       id="humidity-alert"
-                      checked={subscriptions.humidity}
+                      checked={subscriptions.humidity || false} // Ensure default value is false
                       onChange={(e) => setSubscriptions({ ...subscriptions, humidity: e.target.checked })}
                     />
                   </div>
@@ -300,7 +300,7 @@ export default function Dashboard() {
                     <Input
                       type="checkbox"
                       id="soil-moisture-alert"
-                      checked={subscriptions.moisture}
+                      checked={subscriptions.moisture || false} // Ensure default value is false
                       onChange={(e) => setSubscriptions({ ...subscriptions, moisture: e.target.checked })}
                     />
                   </div>
@@ -313,7 +313,7 @@ export default function Dashboard() {
                     <Input
                       type="checkbox"
                       id="light-alert"
-                      checked={subscriptions.light}
+                      checked={subscriptions.light || false} // Ensure default value is false
                       onChange={(e) => setSubscriptions({ ...subscriptions, light: e.target.checked })}
                     />
                     <div className="flex-1"></div>
