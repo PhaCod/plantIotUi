@@ -193,8 +193,6 @@ export default function Dashboard() {
     }
   };
 
-  const [temperatureBound, setTemperatureBound] = useState("lower"); // Add state for bound
-
   return (
     <div className="container mx-auto p-4">
       <header className="flex justify-between items-center mb-6">
@@ -375,13 +373,14 @@ export default function Dashboard() {
                     />
                     <select
                       className="w-full border rounded-md p-2"
-                      value={temperatureBound} // Bind to state
+                      value={temperatureThreshold.bound || ""} // Ensure the initial value is empty
                       onChange={(e) => {
                         const selectedBound = e.target.value;
-                        setTemperatureBound(selectedBound); // Update bound state
+                        setTemperatureThreshold({ ...temperatureThreshold, bound: selectedBound }); // Update bound state
                         setIsTemperatureChanged(true);
                       }}
                     >
+                      <option value="" disabled hidden>Select Bound</option> // Add placeholder option
                       <option value="lower">Lower</option>
                       <option value="upper">Upper</option>
                     </select>
@@ -391,7 +390,7 @@ export default function Dashboard() {
                   <Button
                     variant="default"
                     disabled={!isTemperatureChanged}
-                    onClick={() => handleSetThreshold("temp", temperatureThreshold.value, temperatureBound)} // Use bound state
+                    onClick={() => handleSetThreshold("temp", temperatureThreshold.value, temperatureThreshold.bound)} // Use bound state
                   >
                     Save
                   </Button>
@@ -417,13 +416,14 @@ export default function Dashboard() {
                     />
                     <select
                       className="w-full border rounded-md p-2"
-                      value={humidityThreshold.bound} // Bind to state
+                      value={humidityThreshold.bound || ""} // Ensure the initial value is empty
                       onChange={(e) => {
                         const selectedBound = e.target.value;
                         setHumidityThreshold({ ...humidityThreshold, bound: selectedBound }); // Update bound state
                         setIsHumidityChanged(true);
                       }}
                     >
+                      <option value="" disabled hidden>Select Bound</option> // Add placeholder option
                       <option value="lower">Lower</option>
                       <option value="upper">Upper</option>
                     </select>
@@ -458,13 +458,14 @@ export default function Dashboard() {
                     />
                     <select
                       className="w-full border rounded-md p-2"
-                      value={soilMoistureThreshold.bound} // Bind to state
+                      value={soilMoistureThreshold.bound || ""} // Ensure the initial value is empty
                       onChange={(e) => {
                         const selectedBound = e.target.value;
                         setSoilMoistureThreshold({ ...soilMoistureThreshold, bound: selectedBound }); // Update bound state
                         setIsSoilMoistureChanged(true);
                       }}
                     >
+                      <option value="" disabled hidden>Select Bound</option> // Add placeholder option
                       <option value="lower">Lower</option>
                       <option value="upper">Upper</option>
                     </select>
@@ -499,13 +500,14 @@ export default function Dashboard() {
                     />
                     <select
                       className="w-full border rounded-md p-2"
-                      value={lightThreshold.bound} // Bind to state
+                      value={lightThreshold.bound || ""} // Ensure the initial value is empty
                       onChange={(e) => {
                         const selectedBound = e.target.value;
                         setLightThreshold({ ...lightThreshold, bound: selectedBound }); // Update bound state
                         setIsLightChanged(true);
                       }}
                     >
+                      <option value="" disabled hidden>Select Bound</option> // Add placeholder option
                       <option value="lower">Lower</option>
                       <option value="upper">Upper</option>
                     </select>
