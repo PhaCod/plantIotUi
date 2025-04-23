@@ -365,7 +365,7 @@ export default function Dashboard() {
                       type="number"
                       placeholder="Value"
                       className="w-full"
-                      value={temperatureThreshold.value || ""} // Ensure value is always defined
+                      value={temperatureThreshold.value} // Allow 0 as a valid value
                       onChange={(e) => {
                         setTemperatureThreshold({ ...temperatureThreshold, value: Number(e.target.value) });
                         setIsTemperatureChanged(true);
@@ -407,7 +407,7 @@ export default function Dashboard() {
                       type="number"
                       placeholder="Value"
                       className="w-full"
-                      value={humidityThreshold.value || ""} // Ensure value is always defined
+                      value={humidityThreshold.value} // Allow 0 as a valid value
                       onChange={(e) => {
                         setHumidityThreshold({ ...humidityThreshold, value: Number(e.target.value) });
                         setIsHumidityChanged(true);
@@ -449,7 +449,7 @@ export default function Dashboard() {
                       type="number"
                       placeholder="Value"
                       className="w-full"
-                      value={soilMoistureThreshold.value || ""} // Ensure value is always defined
+                      value={soilMoistureThreshold.value} // Allow 0 as a valid value
                       onChange={(e) => {
                         setSoilMoistureThreshold({ ...soilMoistureThreshold, value: Number(e.target.value) });
                         setIsSoilMoistureChanged(true);
@@ -491,7 +491,7 @@ export default function Dashboard() {
                       type="number"
                       placeholder="Value"
                       className="w-full"
-                      value={lightThreshold.value || ""} // Ensure value is always defined
+                      value={lightThreshold.value} // Allow 0 as a valid value
                       onChange={(e) => {
                         setLightThreshold({ ...lightThreshold, value: Number(e.target.value) });
                         setIsLightChanged(true);
