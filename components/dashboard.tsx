@@ -432,7 +432,6 @@ export default function Dashboard() {
                 <CardFooter>
                   <Button
                     variant="default"
-                    disabled={!isHumidityChanged}
                     onClick={() => handleSetThreshold("humidity", humidityThreshold.value, humidityThreshold.bound)}
                   >
                     Save
@@ -474,7 +473,6 @@ export default function Dashboard() {
                 <CardFooter>
                   <Button
                     variant="default"
-                    disabled={!isSoilMoistureChanged}
                     onClick={() => handleSetThreshold("moisture", soilMoistureThreshold.value, soilMoistureThreshold.bound)}
                   >
                     Save
