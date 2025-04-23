@@ -117,7 +117,7 @@ export class IoTApi {
     }
   }
 
-  public async setThreshold(topic: string, value: number, bound: string): Promise<string> {
+  public async setThreshold(topic: string, val: number, bound: string): Promise<string> {
     try {
       const session = await getSession(); // Retrieve session from next-auth
       const token = session?.accessToken; // Extract access token
@@ -132,7 +132,7 @@ export class IoTApi {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}` // Add token to Authorization header
         },
-        body: JSON.stringify({ topic, value, bound }),
+        body: JSON.stringify({ topic, val, bound }),
       });
 
       if (!response.ok) {
