@@ -19,7 +19,7 @@ const generatePredictionData = () => {
       time: time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       temperature: 25 + Math.sin(i / 6) * 5 + (Math.random() * 2 - 1),
       humidity: 60 + Math.sin(i / 8) * 15 + (Math.random() * 5 - 2.5),
-      soilMoisture: 50 + Math.cos(i / 12) * 20 + (Math.random() * 3 - 1.5),
+      moisture: 50 + Math.cos(i / 12) * 20 + (Math.random() * 3 - 1.5),
       lightIntensity: 1000 + Math.sin(i / 12) * 800 * (i > 6 && i < 18 ? 1 : 0.1) + (Math.random() * 100 - 50),
     })
   }
@@ -211,7 +211,7 @@ export default function PredictionPanel() {
                     <Legend />
                     <Line
                       type="monotone"
-                      dataKey="soilMoisture"
+                      dataKey="moisture"
                       stroke="#22c55e"
                       name="Soil Moisture (%)"
                       strokeWidth={2}

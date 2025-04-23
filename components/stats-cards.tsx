@@ -9,18 +9,18 @@ import { iotApi } from "@/app/api/iotApi/route";
 interface SensorData {
   temperature: number | null
   humidity: number | null
-  soilMoisture: number | null
+  moisture: number | null
   lightIntensity: number | null
   temperatureThreshold?: { lower: number; upper: number }
   humidityThreshold?: { lower: number; upper: number }
-  soilMoistureThreshold?: { lower: number; upper: number }
+  moistureThreshold?: { lower: number; upper: number }
   lightIntensityThreshold?: { lower: number; upper: number }
 }
 
 const initialSensorData: SensorData = {
   temperature: null,
   humidity: null,
-  soilMoisture: null,
+  moisture: null,
   lightIntensity: null,
 }
 
@@ -55,7 +55,7 @@ const StatsCards = forwardRef((props, ref) => {
           ...prev,
           temperatureThreshold: tempThreshold,
           humidityThreshold: humidityThreshold,
-          soilMoistureThreshold: moistureThreshold,
+          moistureThreshold: moistureThreshold,
           lightIntensityThreshold: lightThreshold,
         }));
 
@@ -66,7 +66,7 @@ const StatsCards = forwardRef((props, ref) => {
           setSensorData((prev) => ({ ...prev, humidity: parseFloat(data.value) }));
         });
         iotApi.getFeedLastData("moisture").then((data) => {
-          setSensorData((prev) => ({ ...prev, soilMoisture: parseFloat(data.value) }));
+          setSensorData((prev) => ({ ...prev, moisture: parseFloat(data.value) }));
         });
         iotApi.getFeedLastData("light").then((data) => {
           setSensorData((prev) => ({ ...prev, lightIntensity: parseFloat(data.value) }));
@@ -81,7 +81,7 @@ const StatsCards = forwardRef((props, ref) => {
               case "humidity":
                 return { ...prev, humidity: parseFloat(data.value) };
               case "moisture":
-                return { ...prev, soilMoisture: parseFloat(data.value) };
+                return { ...prev, moisture: parseFloat(data.value) };
               case "light":
                 return { ...prev, lightIntensity: parseFloat(data.value) };
               default:
@@ -109,7 +109,7 @@ const StatsCards = forwardRef((props, ref) => {
         } else if (topic === "temp") {
           return { ...prev, temperatureThreshold: { lower, upper } };
         } else if (topic === "moisture") {
-          return { ...prev, soilMoistureThreshold: { lower, upper } };
+          return { ...prev, moistureThreshold: { lower, upper } };
         } else if (topic === "light") {
           return { ...prev, lightIntensityThreshold: { lower, upper } };
         }
@@ -141,11 +141,11 @@ const StatsCards = forwardRef((props, ref) => {
     return "text-green-500"
   }
 
-  const getSoilMoistureStatus = (value: number | null) => {
+  const getmoistureStatus = (value: number | null) => {
     if (value === null) return "text-gray-400"
-    if (sensorData.soilMoistureThreshold) {
-      if (value < sensorData.soilMoistureThreshold.lower) return "text-red-500"
-      if (value > sensorData.soilMoistureThreshold.upper) return "text-blue-500"
+    if (sensorData.moistureThreshold) {
+      if (value < sensorData.moistureThreshold.lower) return "text-red-500"
+      if (value > sensorData.moistureThreshold.upper) return "text-blue-500"
     }
     return "text-green-500"
   }
@@ -214,16 +214,16 @@ const StatsCards = forwardRef((props, ref) => {
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className={`text-2xl font-bold ${getSoilMoistureStatus(sensorData.soilMoisture)}`}>
-                  {formatSensorValue(sensorData.soilMoisture, (v) => `${v.toFixed(0)}%`)}
+                <div className={`text-2xl font-bold ${getmoistureStatus(sensorData.moisture)}`}>
+                  {formatSensorValue(sensorData.moisture, (v) => `${v.toFixed(0)}%`)}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{`$$H_{soil} = ${sensorData.soilMoisture?.toFixed(0) ?? "--"}\\%$$`}</p>
+                <p>{`$$H_{soil} = ${sensorData.moisture?.toFixed(0) ?? "--"}\\%$$`}</p>
               </TooltipContent>
             </Tooltip>
             <p className="text-xs text-muted-foreground">
-              Optimal range: {sensorData.soilMoistureThreshold?.lower ?? "--"}-{sensorData.soilMoistureThreshold?.upper ?? "--"}%
+              Optimal range: {sensorData.moistureThreshold?.lower ?? "--"}-{sensorData.moistureThreshold?.upper ?? "--"}%
             </p>
           </CardContent>
         </Card>
