@@ -389,7 +389,6 @@ export default function Dashboard() {
                 <CardFooter>
                   <Button
                     variant="default"
-                    disabled={!isTemperatureChanged}
                     onClick={() => handleSetThreshold("temp", temperatureThreshold.value, temperatureThreshold.bound)} // Use bound state
                   >
                     Save
@@ -516,7 +515,6 @@ export default function Dashboard() {
                 <CardFooter>
                   <Button
                     variant="default"
-                    disabled={!isLightChanged}
                     onClick={() => handleSetThreshold("light", lightThreshold.value, lightThreshold.bound)}
                   >
                     Save
