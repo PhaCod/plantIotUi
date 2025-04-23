@@ -126,7 +126,7 @@ export class IoTApi {
         throw new Error("Access token is missing");
       }
 
-      const response = await fetch(`${API_BASE_URL}/config`, {
+      const response = await fetch(`${API_BASE_URL}/config/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
