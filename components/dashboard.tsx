@@ -73,12 +73,12 @@ export default function Dashboard() {
 
   const [temperatureThreshold, setTemperatureThreshold] = useState({ value: 0, bound: "" });
   const [humidityThreshold, setHumidityThreshold] = useState({ value: 0, bound: "" });
-  const [soilMoistureThreshold, setSoilMoistureThreshold] = useState({ value: 0, bound: ""});
+  const [moistureThreshold, setmoistureThreshold] = useState({ value: 0, bound: ""});
   const [lightThreshold, setLightThreshold] = useState({ value: 0, bound: "" });
 
   const [isTemperatureChanged, setIsTemperatureChanged] = useState(false);
   const [isHumidityChanged, setIsHumidityChanged] = useState(false);
-  const [isSoilMoistureChanged, setIsSoilMoistureChanged] = useState(false);
+  const [ismoistureChanged, setIsmoistureChanged] = useState(false);
   const [isLightChanged, setIsLightChanged] = useState(false);
 
   useEffect(() => {
@@ -90,8 +90,8 @@ export default function Dashboard() {
         const humidity = await iotApi.getThreshold("humidity");
         setHumidityThreshold(humidity);
 
-        const soilMoisture = await iotApi.getThreshold("moisture");
-        setSoilMoistureThreshold(soilMoisture);
+        const moisture = await iotApi.getThreshold("moisture");
+        setmoistureThreshold(moisture);
 
         const light = await iotApi.getThreshold("light");
         setLightThreshold(light);
@@ -106,7 +106,7 @@ export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState({
     temp: false,
     humidity: false,
-    soilMoisture: false,
+    moisture: false,
     light: false,
   });
 
@@ -177,7 +177,7 @@ export default function Dashboard() {
       } else if (topic === "temp") {
         setIsTemperatureChanged(false);
       } else if (topic === "moisture") {
-        setIsSoilMoistureChanged(false);
+        setIsmoistureChanged(false);
       } else if (topic === "light") {
         setIsLightChanged(false);
       }
@@ -261,8 +261,8 @@ export default function Dashboard() {
                     <Input
                       type="checkbox"
                       id="soil-moisture-alert"
-                      checked={subscriptions.soilMoisture}
-                      onChange={(e) => setSubscriptions({ ...subscriptions, soilMoisture: e.target.checked })}
+                      checked={subscriptions.moisture}
+                      onChange={(e) => setSubscriptions({ ...subscriptions, moisture: e.target.checked })}
                     />
                   </div>
                 </div>
@@ -449,19 +449,19 @@ export default function Dashboard() {
                       type="number"
                       placeholder="Value"
                       className="w-full"
-                      value={soilMoistureThreshold.value} // Allow 0 as a valid value
+                      value={moistureThreshold.value} // Allow 0 as a valid value
                       onChange={(e) => {
-                        setSoilMoistureThreshold({ ...soilMoistureThreshold, value: Number(e.target.value) });
-                        setIsSoilMoistureChanged(true);
+                        setmoistureThreshold({ ...moistureThreshold, value: Number(e.target.value) });
+                        setIsmoistureChanged(true);
                       }}
                     />
                     <select
                       className="w-full border rounded-md p-2"
-                      value={soilMoistureThreshold.bound || ""} // Ensure the initial value is empty
+                      value={moistureThreshold.bound || ""} // Ensure the initial value is empty
                       onChange={(e) => {
                         const selectedBound = e.target.value;
-                        setSoilMoistureThreshold({ ...soilMoistureThreshold, bound: selectedBound }); // Update bound state
-                        setIsSoilMoistureChanged(true);
+                        setmoistureThreshold({ ...moistureThreshold, bound: selectedBound }); // Update bound state
+                        setIsmoistureChanged(true);
                       }}
                     >
                       <option value="" disabled hidden>Select Bound</option> // Add placeholder option
@@ -473,7 +473,7 @@ export default function Dashboard() {
                 <CardFooter>
                   <Button
                     variant="default"
-                    onClick={() => handleSetThreshold("moisture", soilMoistureThreshold.value, soilMoistureThreshold.bound)}
+                    onClick={() => handleSetThreshold("moisture", moistureThreshold.value, moistureThreshold.bound)}
                   >
                     Save
                   </Button>

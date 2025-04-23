@@ -8,14 +8,14 @@ import { iotApi } from "@/lib/api"
 interface SensorData {
   temperature: number
   humidity: number
-  soilMoisture: number
+  moisture: number
   lightIntensity: number
 }
 
 const initialSensorData: SensorData = {
   temperature: 0,
   humidity: 0,
-  soilMoisture: 0,
+  moisture: 0,
   lightIntensity: 0,
 }
 
@@ -33,7 +33,7 @@ export default function SensorReadings() {
             case 'humidity':
               return { ...prev, humidity: parseFloat(data.value) }
             case 'moisture':
-              return { ...prev, soilMoisture: parseFloat(data.value) }
+              return { ...prev, moisture: parseFloat(data.value) }
             case 'light':
               return { ...prev, lightIntensity: parseFloat(data.value) }
             default:
@@ -64,7 +64,7 @@ export default function SensorReadings() {
     return "text-green-500"
   }
 
-  const getSoilMoistureStatus = (value: number) => {
+  const getmoistureStatus = (value: number) => {
     if (value < 30) return "text-red-500"
     if (value > 70) return "text-blue-500"
     return "text-green-500"
@@ -110,8 +110,8 @@ export default function SensorReadings() {
           <Sprout className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${getSoilMoistureStatus(sensorData.soilMoisture)}`}>
-            {sensorData.soilMoisture.toFixed(0)}%
+          <div className={`text-2xl font-bold ${getmoistureStatus(sensorData.moisture)}`}>
+            {sensorData.moisture.toFixed(0)}%
           </div>
           <p className="text-xs text-muted-foreground">Optimal range: 30-70%</p>
         </CardContent>

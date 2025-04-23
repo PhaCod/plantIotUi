@@ -14,7 +14,7 @@ interface ChartDataPoint {
   timestamp: number
   temperature?: number
   humidity?: number
-  soilMoisture?: number
+  moisture?: number
   lightIntensity?: number
 }
 
@@ -82,7 +82,7 @@ export default function EnvironmentCharts() {
   // Check if we have data for each parameter
   const hasTemperatureData = chartData.some((point) => point.temperature !== undefined)
   const hasHumidityData = chartData.some((point) => point.humidity !== undefined)
-  const hasSoilMoistureData = chartData.some((point) => point.soilMoisture !== undefined)
+  const hasmoistureData = chartData.some((point) => point.moisture !== undefined)
   const hasLightIntensityData = chartData.some((point) => point.lightIntensity !== undefined)
 
   // Reverse the chartData array to display the newest data on the right
@@ -145,7 +145,7 @@ export default function EnvironmentCharts() {
             <TabsTrigger value="humidity" disabled={!hasHumidityData}>
               Humidity
             </TabsTrigger>
-            <TabsTrigger value="soil" disabled={!hasSoilMoistureData}>
+            <TabsTrigger value="soil" disabled={!hasmoistureData}>
               Soil Moisture
             </TabsTrigger>
             <TabsTrigger value="light" disabled={!hasLightIntensityData}>
@@ -212,7 +212,7 @@ export default function EnvironmentCharts() {
           </TabsContent>
 
           <TabsContent value="soil">
-            {hasSoilMoistureData ? (
+            {hasmoistureData ? (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={reversedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -223,7 +223,7 @@ export default function EnvironmentCharts() {
                     <Legend />
                     <Line
                       type="monotone"
-                      dataKey="soilMoisture"
+                      dataKey="moisture"
                       stroke="#22c55e"
                       name="Soil Moisture (%)"
                       strokeWidth={2}

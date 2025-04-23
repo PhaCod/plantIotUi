@@ -16,7 +16,7 @@ interface ChartDataPoint {
   timestamp: number
   temperature?: number
   humidity?: number
-  soilMoisture?: number
+  moisture?: number
   lightIntensity?: number
 }
 
@@ -28,7 +28,7 @@ const ADAFRUIT_USERNAME = process.env.NEXT_PUBLIC_API_USERNAME
 const FEEDS = {
   temperature: "temp",
   humidity: "humidity",
-  soilMoisture: "moisture", // Changed from "soil-moisture" to "moisture"
+  moisture: "moisture", // Changed from "soil-moisture" to "moisture"
   lightIntensity: "light", // Changed from "light-intensity" to "light"
 }
 
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     const results = await Promise.all([
       fetchFeedData(FEEDS.temperature),
       fetchFeedData(FEEDS.humidity),
-      fetchFeedData(FEEDS.soilMoisture),
+      fetchFeedData(FEEDS.moisture),
       fetchFeedData(FEEDS.lightIntensity),
     ])
 
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
     }
 
     // Process data from successful feeds only
-    const [tempResult, humidityResult, soilMoistureResult, lightIntensityResult] = results
+    const [tempResult, humidityResult, moistureResult, lightIntensityResult] = results
 
     // Process temperature data - only if successful
     const tempPoints = tempResult.success
@@ -125,13 +125,13 @@ export async function GET(request: Request) {
       : []
 
     // Process soil moisture data - only if successful
-    const soilMoisturePoints = soilMoistureResult.success
-      ? soilMoistureResult.data.map((item: AdafruitData) => {
+    const moisturePoints = moistureResult.success
+      ? moistureResult.data.map((item: AdafruitData) => {
           const date = new Date(item.created_at)
           return {
             time: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             timestamp: date.getTime(),
-            soilMoisture: Number.parseFloat(item.value),
+            moisture: Number.parseFloat(item.value),
           }
         })
       : []
@@ -149,7 +149,7 @@ export async function GET(request: Request) {
       : []
 
     // Combine all data points
-    const allDataPoints = [...tempPoints, ...humidityPoints, ...soilMoisturePoints, ...lightIntensityPoints]
+    const allDataPoints = [...tempPoints, ...humidityPoints, ...moisturePoints, ...lightIntensityPoints]
 
     // If we have no data points at all, return an error
     if (allDataPoints.length === 0) {
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
       // Find data points for this timestamp
       const tempPoint = tempPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
       const humidityPoint = humidityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
-      const soilMoisturePoint = soilMoisturePoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
+      const moisturePoint = moisturePoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
       const lightIntensityPoint = lightIntensityPoints.find((p: ChartDataPoint) => p.timestamp === timestamp)
 
       // Combine data
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
         timestamp,
         temperature: tempPoint?.temperature,
         humidity: humidityPoint?.humidity,
-        soilMoisture: soilMoisturePoint?.soilMoisture,
+        moisture: moisturePoint?.moisture,
         lightIntensity: lightIntensityPoint?.lightIntensity,
       }
     })
