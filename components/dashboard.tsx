@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Gauge, BellRing, Bell, Activity, Settings, BarChart3, User } from "lucide-react"
 import {
   DropdownMenu,
@@ -110,6 +109,46 @@ export default function Dashboard() {
     light: false,
   });
 
+  useEffect(() => {
+    async function fetchUserChannels() {
+      try {
+        const session = await getSession(); // Retrieve session from next-auth
+        const token = session?.accessToken; // Extract access token
+
+        if (token) {
+          const response = await fetch(`${API_BASE_URL}/users/me`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}` // Add token to Authorization header
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch user channels.");
+          }
+
+          const data = await response.json();
+          if (data.channels) {
+            setSubscriptions((prev) => {
+              const updatedSubscriptions = { ...prev };
+              data.channels.forEach((channel: string) => {
+                if (channel in updatedSubscriptions) {
+                  updatedSubscriptions[channel as keyof typeof updatedSubscriptions] = true;
+                }
+              });
+              return updatedSubscriptions;
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user channels:", error);
+      }
+    }
+
+    fetchUserChannels();
+  }, []);
+
   const handleSubscribe = async () => {
 
     const selectedChannels = Object.keys(subscriptions).filter(
@@ -155,7 +194,7 @@ export default function Dashboard() {
 
       // Update the thresholds in StatsCards
       if (statsCardsRef.current) {
-        const thresholds = {
+        const thresholds: Record<string, { value: number; bound: string }> = {
           temp: await iotApi.getThreshold("temp"),
           humidity: await iotApi.getThreshold("humidity"),
           moisture: await iotApi.getThreshold("moisture"),
@@ -165,8 +204,8 @@ export default function Dashboard() {
         if (thresholds[topic]) {
           statsCardsRef.current.updateSensorData(
             topic,
-            thresholds[topic].lower,
-            thresholds[topic].upper
+            thresholds[topic].value, // Use 'value' instead of 'lower'
+            thresholds[topic].bound // Use 'bound' instead of 'upper'
           );
         }
       }
