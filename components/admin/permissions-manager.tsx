@@ -23,7 +23,7 @@ interface User {
 interface Permissions {
   fan: boolean;
   pump: boolean;
-  lights: boolean;
+  led: boolean;
 }
 
 export default function PermissionsManager() {
@@ -73,7 +73,7 @@ export default function PermissionsManager() {
     setEditedPermissions({
       fan: user.permissions.includes("fan"),
       pump: user.permissions.includes("pump"),
-      lights: user.permissions.includes("led"),
+      led: user.permissions.includes("led"),
     });
   };
 
@@ -224,8 +224,8 @@ export default function PermissionsManager() {
                       </div>
                     </div>
                     <Switch
-                      checked={editedPermissions?.lights || false}
-                      onCheckedChange={(checked) => handlePermissionChange("lights", checked)}
+                      checked={editedPermissions?.led || false}
+                      onCheckedChange={(checked) => handlePermissionChange("led", checked)}
                     />
                   </div>
                 </div>
